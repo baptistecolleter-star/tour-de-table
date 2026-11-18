@@ -45,8 +45,11 @@
   }
 
   // --- État local de ce téléphone --------------------------------------------------
-  const me = { name: store.get('tdt-name', ''), token: store.get('tdt-token', '') || uid() };
-  store.set('tdt-token', me.token);
+  // Jeton par onglet : deux onglets du même navigateur comptent comme deux joueurs,
+  // et un rechargement de page retrouve sa place dans la salle.
+  let tok = ''; try { tok = sessionStorage.getItem('tdt-token') || ''; } catch { /* ignoré */ }
+  const me = { name: store.get('tdt-name', ''), token: tok || uid() };
+  try { sessionStorage.setItem('tdt-token', me.token); } catch { /* ignoré */ }
   const view = {
     screen: 'home', s: null, myId: null, media: {}, deadline: 0, key: '',
     myPhotos: [], err: '', pin: params.get('pin') || '', lost: false
@@ -117,7 +120,7 @@
   function hostJoin(conn, msg) {
     const name = String(msg.name || '').trim().slice(0, 16) || 'Joueur';
     const token = String(msg.token || '').slice(0, 40);
-    let p = H.players.find((x) => x.token === token);
+    let p = token && token !== me.token ? H.players.find((x) => x.token === token) : null;
     if (!p) {
       if (H.players.length >= MAX_PLAYERS) { conn.send({ t: 'error', msg: 'La salle est pleine (12 joueurs maximum).' }); return; }
       let n = name, i = 2;
