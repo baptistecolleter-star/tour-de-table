@@ -46,16 +46,16 @@
   // Packs débloqués sur ce téléphone : { coquin: { a_vie: true } | { jusqua: timestamp } }
   const packs = {
     all() { try { return JSON.parse(store.get('tdt-packs', '{}')) || {}; } catch { return {}; } },
-    has(id) { const p = packs.all()[id]; return !!p && (p.a_vie || (p.jusqua && p.jusqua > Date.now())); },
-    unlock(id, how) {
+    has(id) { const p = packs.all()[id]; return !!p && !!p.jusqua && p.jusqua > Date.now(); },
+    unlock(id) {
       const all = packs.all();
-      all[id] = how === 'paiement' ? { a_vie: true } : { jusqua: Date.now() + CFG.dureePub * 3600e3 };
+      all[id] = { jusqua: Date.now() + CFG.dureePub * 3600e3 };
       store.set('tdt-packs', JSON.stringify(all));
     },
     label(id) {
       const p = packs.all()[id];
       if (!packs.has(id)) return '';
-      return p.a_vie ? 'Débloqué' : 'Débloqué jusqu’à ' + new Date(p.jusqua).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      return 'Débloqué jusqu’à ' + new Date(p.jusqua).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
     }
   };
   const perso = {
@@ -459,8 +459,16 @@
   }
 
   function hostNext() {
-    if (H.phase !== 'reveal') return;
-    if (H.q && H.q.type === 'auteur' && H.auteur && H.auteur.queue.length) return hostNextAuteur();
+    if (H.phase !== 'reveal' && H.phase !== 'pub') return;
+    if (H.phase === 'reveal') {
+      if (H.q && H.q.type === 'auteur' && H.auteur && H.auteur.queue.length) return hostNextAuteur();
+      const done = H.step + 1, every = +CFG.pubToutesLesManches || 0;
+      if (every && done % every === 0 && done < H.plan.length) {
+        H.phase = 'pub'; H.q = null; H.reveal = null; H.qid++;
+        hostTimer(+CFG.pubDureeSecondes || 8, hostNext);
+        return hostBroadcast();
+      }
+    }
     H.step++;
     if (H.step >= H.plan.length) return hostEnd();
     hostStep();
@@ -584,7 +592,8 @@
     else if (view.screen === 'connecting') app.innerHTML = '<div class="spinner"></div><p class="center mute">Connexion à la salle…</p>';
     else {
       const ph = view.s.phase;
-      app.innerHTML = (ph === 'lobby' ? lobbyHTML() : ph === 'write' ? writeHTML() : ph === 'question' ? questionHTML() : ph === 'reveal' ? revealHTML() : endHTML());
+      app.innerHTML = (ph === 'lobby' ? lobbyHTML() : ph === 'write' ? writeHTML() : ph === 'question' ? questionHTML() : ph === 'reveal' ? revealHTML() : ph === 'pub' ? pubHTML() : endHTML());
+      if (ph === 'pub') showInterstitial(view.s.qid);
     }
     bind();
     updateDynamic();
@@ -648,7 +657,7 @@
         ${Object.entries(CFG.packs).map(([id, pk]) => `
           <div class="pack">
             <div><b>${pk.nom}</b><p class="mute small">${pk.desc}</p></div>
-            <div class="packact">${packs.has(id) ? `<span class="ok small">✓ ${packs.label(id)}</span>${id === 'perso' ? '<button class="small" id="editPerso">Mes questions</button>' : ''}` : `<button class="small primary" data-unlock="${id}">Débloquer</button>`}</div>
+            <div class="packact">${packs.has(id) ? `<span class="ok small">✓ ${packs.label(id)}</span>${id === 'perso' ? '<button class="small" id="editPerso">Mes questions</button>' : ''}` : `<button class="small primary" data-unlock="${id}">📺 Débloquer</button>`}</div>
           </div>`).join('')}
       </div>
       <div class="card">
@@ -718,6 +727,15 @@
       <div class="results">${r.results.map((x) => `<div class="res"><span><b>${esc(x.name)}</b> · <span class="mute">${esc(x.shown)}</span></span><span class="pts ${x.pts ? '' : 'zero'}">+${x.pts}</span></div>`).join('')}</div>
       <div class="card"><h3>Classement</h3><div class="scores" id="scores"></div></div>
       ${isHost() ? '<button id="skip" class="primary">Suivant ▶</button>' : '<p class="mute center small">La suite arrive…</p>'}`;
+  }
+
+  function pubHTML() {
+    return `<div class="pubpause">
+      <p class="top" style="justify-content:center">Petite pause pub</p>
+      <div class="adbox big"><b>Espace publicitaire</b><span>${ads.real() ? 'Chargement de la publicité…' : '(démonstration : une vraie régie afficherait une pub ici)'}</span></div>
+      <div class="bar"><i id="bar"></i></div>
+      <p class="mute center small">La partie reprend toute seule dans quelques secondes. Merci de soutenir le jeu ❤️</p>
+    </div>`;
   }
 
   function endHTML() {
@@ -870,20 +888,18 @@
   }
   function openUnlock(id) {
     const pk = CFG.packs[id];
-    const link = CFG.paiement[id];
     const m = modal(`<h3>${pk.nom}</h3><p>${pk.desc}</p>
-      <button class="primary" id="pay">Débloquer pour toujours · ${pk.prix}</button>
-      <button id="ad">📺 Regarder une pub (débloqué ${CFG.dureePub} h)</button>
-      ${link ? '' : '<p class="mute small">Mode démo : aucun paiement ni aucune vraie publicité. Le pack se débloque gratuitement pour tester.</p>'}
+      <button class="primary" id="ad">📺 Regarder une pub pour débloquer (${CFG.dureePub} h)</button>
+      ${ads.real() ? '' : '<p class="mute small">Mode démo : fausse publicité, aucun revenu.</p>'}
       <button class="ghost" id="cancel">Plus tard</button>`);
     m.querySelector('#cancel').onclick = closeModal;
-    m.querySelector('#pay').onclick = () => {
-      if (link) { window.open(link, '_blank', 'noopener'); return; }
-      packs.unlock(id, 'paiement'); closeModal(); toast(pk.nom + ' débloqué (démo)'); refreshLobby();
+    m.querySelector('#ad').onclick = () => {
+      const done = () => { packs.unlock(id); closeModal(); toast(pk.nom + ' débloqué pour ' + CFG.dureePub + ' h'); refreshLobby(); };
+      if (ads.real()) { closeModal(); ads.rewarded(done, () => toast('Pub indisponible pour le moment, réessaie plus tard')); }
+      else playDemoAd(done);
     };
-    m.querySelector('#ad').onclick = () => playAd(id);
   }
-  function playAd(id) {
+  function playDemoAd(onReward) {
     let left = CFG.pubDemoSecondes;
     const m = modal(`<h3>Publicité</h3><div class="adbox"><b>Espace publicitaire</b><span>(démonstration : une vraie régie afficherait une vidéo ici)</span></div>
       <p class="center" id="adLeft"></p><button class="primary" id="adDone" disabled>Récupérer mon pack</button>`);
@@ -894,8 +910,47 @@
       left--;
     };
     const t = setInterval(tick, 1000); tick();
-    m.querySelector('#adDone').onclick = () => { clearInterval(t); packs.unlock(id, 'pub'); closeModal(); toast(CFG.packs[id].nom + ' débloqué pour ' + CFG.dureePub + ' h'); refreshLobby(); };
+    m.querySelector('#adDone').onclick = () => { clearInterval(t); onReward(); };
   }
+
+  // --- Régie publicitaire : Google AdSense « H5 Games Ads » (Ad Placement API) ---
+  // Active seulement si CFG.adsenseClient est rempli ; sinon pubs de démonstration.
+  const ads = {
+    loaded: false,
+    real() { return !!CFG.adsenseClient; },
+    load() {
+      if (!ads.real() || ads.loaded) return;
+      ads.loaded = true;
+      const sc = document.createElement('script');
+      sc.async = true; sc.crossOrigin = 'anonymous';
+      sc.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(CFG.adsenseClient);
+      if (CFG.adsenseTest) sc.setAttribute('data-adbreak-test', 'on');
+      sc.setAttribute('data-ad-frequency-hint', '30s');
+      document.head.appendChild(sc);
+      window.adsbygoogle = window.adsbygoogle || [];
+      window.adBreak = window.adConfig = (o) => window.adsbygoogle.push(o);
+      window.adConfig({ preloadAdBreaks: 'on', sound: 'on' });
+    },
+    interstitial() { if (ads.real()) window.adBreak({ type: 'next', name: 'entre-manches' }); },
+    rewarded(onReward, onFail) {
+      let ok = false;
+      window.adBreak({
+        type: 'reward', name: 'debloquer-pack',
+        beforeReward: (showAdFn) => showAdFn(),
+        adViewed: () => { ok = true; },
+        adDismissed: () => {},
+        adBreakDone: () => { if (ok) onReward(); else onFail(); }
+      });
+    }
+  };
+  ads.load();
+  let lastInterstitial = -1;
+  function showInterstitial(qid) {
+    if (qid === lastInterstitial) return;
+    lastInterstitial = qid;
+    ads.interstitial();
+  }
+
   function openPerso() {
     const v = perso.get();
     const box = (k, label, ph) => `<label>${label}<textarea data-perso="${k}" rows="5" placeholder="${ph}">${esc(v[k].join('\n'))}</textarea></label>`;
