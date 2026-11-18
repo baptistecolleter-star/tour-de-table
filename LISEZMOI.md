@@ -47,6 +47,14 @@ Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikida
 - **Connexion** : PeerJS (WebRTC), avec le serveur public gratuit de PeerJS pour la mise en relation. Ensuite, les données passent directement d'un téléphone à l'autre.
 - **Photos des joueurs** : réduites à 720 px sur le téléphone, ce qui supprime aussi la position GPS. Elles ne sont jamais stockées sur un serveur.
 
+## Ambiance de jeu
+
+- **Suspense** : les votes s'affichent un par un, puis la bonne réponse apparaît ; les points arrivent ensuite.
+- **Sons et vibrations** générés par le téléphone (tic-tac des 5 dernières secondes, roulement de tambour, bonne ou mauvaise réponse, fanfare du podium). Bouton 🔊/🔇 en haut à droite.
+- **Joker ×2** : chaque joueur peut regarder une pub pendant l'affichage des résultats pour doubler ses points à la manche suivante (3 jokers maximum par partie).
+- **Packs d'occasion** (débloqués 24 h par une pub) : 🎄 Noël en famille, 🎂 Anniversaire, 💍 EVJF / EVG (18+), 🍻 Afterwork, 🎓 Soirée étudiante. 75 questions chacun, dans `packs.js`.
+- **Partage** : trophées de fin de partie et carte podium au format story à partager ; aperçu soigné du lien d'invitation dans WhatsApp ; installation possible sur l'écran d'accueil.
+
 ## Fiabilité
 
 - **Indicateur de connexion** : pastille par joueur (🟢 bonne, 🟠 faible, ⚪ déconnecté) et bouton « 📶 Tester ma connexion » dans la salle d'attente.

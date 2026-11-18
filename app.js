@@ -18,7 +18,7 @@
   const MAX_PLAYERS = 12;
   const MAX_PHOTOS = 10;
   const Q = window.TDT_Q;
-  const DUR = { susceptible: 20, plusmoins: 15, chiffre: 25, echelle: 25, galerie: 20, auteur: 20, write: 60, reveal: 9 };
+  const DUR = { susceptible: 20, plusmoins: 15, chiffre: 25, echelle: 25, galerie: 20, auteur: 20, write: 60, reveal: 11 };
   const CATS = {
     susceptible: '👉 Qui est le plus susceptible de…',
     echelle: '🔟 Sur une échelle de 1 à 10',
@@ -41,7 +41,12 @@
   const AMB = {
     decontracte: { nom: '😎 Décontractée', desc: 'Fun et léger, pour tout le monde' },
     serieux: { nom: '🕯️ Sérieuse', desc: 'Des questions qui font parler de soi' },
-    coquin: { nom: '🔥 Coquine', desc: 'Osé et flirt, réservé aux adultes', pack: 'coquin' }
+    coquin: { nom: '🔥 Coquine', desc: 'Osé et flirt, réservé aux adultes', pack: 'coquin', adulte: true },
+    noel: { nom: '🎄 Noël en famille', desc: 'Cadeaux, bûche et repas de fête', pack: 'noel', occasion: true },
+    anniv: { nom: '🎂 Anniversaire', desc: 'Pour fêter quelqu’un comme il se doit', pack: 'anniv', occasion: true },
+    evjf: { nom: '💍 EVJF / EVG', desc: 'Enterrement de vie de jeune fille ou de garçon (18+)', pack: 'evjf', occasion: true, adulte: true },
+    afterwork: { nom: '🍻 Afterwork', desc: 'Entre collègues, sans parler boulot (enfin presque)', pack: 'afterwork', occasion: true },
+    etudiant: { nom: '🎓 Soirée étudiante', desc: 'Partiels, coloc et pâtes au beurre', pack: 'etudiant', occasion: true }
   };
 
   // --- Petits outils ------------------------------------------------------------
@@ -202,6 +207,10 @@
       hostBroadcast();
       return hostCheckDone();
     }
+    if (msg.t === 'joker' && H.phase !== 'end' && !p.joker && (p.jokers || 0) < 3) {
+      p.joker = true; p.jokers = (p.jokers || 0) + 1;
+      return hostBroadcast();
+    }
     if (pid !== H.hostId) return; // les commandes ci-dessous sont réservées à l'hôte
     if (msg.t === 'start') return hostStart();
     if (msg.t === 'skip') return hostSkip();
@@ -252,7 +261,8 @@
 
   function hostStart() {
     if (connectedPlayers().length < 2) return toast('Il faut au moins 2 joueurs');
-    if (H.settings.ambiance === 'coquin' && !packs.has('coquin')) return openUnlock('coquin');
+    const amb = AMB[H.settings.ambiance];
+    if (amb && amb.pack && !packs.has(amb.pack)) return openUnlock(amb.pack);
     let cats = availableCats();
     if (!cats.length) cats = ['plusmoins'];
     const plan = [];
@@ -265,7 +275,7 @@
         plan.push(c);
       }
     }
-    H.players.forEach((p) => { p.score = 0; });
+    H.players.forEach((p) => { p.score = 0; p.joker = false; p.jokers = 0; });
     H.stats = {};
     H.plan = plan; H.step = 0;
     track('partie-lancee');
@@ -444,6 +454,7 @@
       }
       answerText = max ? top.map((i) => q.choiceNames[i]).join(' et ') : 'Personne n’a voté';
       if (max) top.forEach((i) => { const s2 = st(q.choices[i]); s2.elu++; s2.eluPrompt = q.prompt; });
+      var tallyArr = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([i, n]) => ({ name: q.choiceNames[i], n }));
       extraLabel = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([i, n]) => q.choiceNames[i] + ' : ' + n + ' vote' + (n > 1 ? 's' : '')).join(' · ');
     }
     if (q.type === 'echelle') {
@@ -477,8 +488,16 @@
       if (owner) st(owner.id).piege += fooled;
       if (owner) { owner.score += 150 * fooled; results.push({ id: owner.id, name: owner.name, shown: 'auteur·rice, ' + fooled + ' piégé' + (fooled > 1 ? 's' : ''), pts: 150 * fooled }); }
     }
+    // Joker ×2 (obtenu en regardant une pub) : double les points de la manche
+    for (const r of results) {
+      const pl = H.players.find((x) => x.id === r.id);
+      if (!pl || !pl.joker) continue;
+      if (r.pts > 0) { pl.score += r.pts; r.pts *= 2; r.shown += ' 🃏×2'; }
+      pl.joker = false;
+    }
     results.sort((a, b) => b.pts - a.pts);
     H.reveal = {
+      tally: typeof tallyArr !== 'undefined' ? tallyArr : null, question: q.type === 'susceptible' ? q.prompt : null,
       answer: answerText ?? (q.type === 'chiffre' ? fmt(q.answer) + (q.unit ? ' ' + q.unit : '') : (q.choiceNames ? q.choiceNames[q.answer] : q.choices[q.answer])),
       title: q.type === 'susceptible' ? 'Élu(e) par le groupe' : q.type === 'echelle' ? 'La note de ' + q.targetName : 'La bonne réponse',
       label: extraLabel ?? q.label, credit: q.type === 'chiffre' || q.type === 'plusmoins' ? 'wikidata' : null, results
@@ -542,6 +561,7 @@
       hostId: H.hostId, gen: H.gen,
       players: H.players.map((p) => ({
         id: p.id, name: p.name, score: p.score, connected: p.connected, photos: p.photos.length,
+        joker: !!p.joker, jokers: p.jokers || 0,
         net: p.id === H.hostId ? 'hote' : !p.connected ? 'perdu' : (Date.now() - (p.lastSeen || 0) > 7000 || (p.rtt || 0) > 800) ? 'faible' : 'ok', rtt: p.rtt || null,
         answered: H.phase === 'write' ? !!(H.auteur && p.id in H.auteur.texts) : p.id in H.answers,
         eligible: H.phase === 'question' ? hostEligible(p.id) : H.phase === 'write' ? p.connected : false
@@ -569,7 +589,7 @@
       pin: H.pin, gen: H.gen, hostId: H.hostId, seq: H.seq, phase: H.phase, settings: H.settings, targets: H.targets,
       plan: H.plan, step: H.step, qid: H.qid, q, answers: H.answers, remaining: Math.max(0, H.endsAt - Date.now()), dur: H.dur,
       reveal: H.reveal, used: [...H.used], auteur: H.auteur, stats: H.stats,
-      players: H.players.map((p) => ({ id: p.id, name: p.name, token: p.token, score: p.score, connected: p.connected }))
+      players: H.players.map((p) => ({ id: p.id, name: p.name, token: p.token, score: p.score, connected: p.connected, joker: !!p.joker, jokers: p.jokers || 0 }))
     }));
   }
 
@@ -753,6 +773,7 @@
     view.s = s; view.myId = s.you; view.screen = 'game';
     view.deadline = Date.now() + s.remaining;
     render();
+    soundFor(s);
   }
 
   function myPlayer() { return view.s && view.s.players.find((p) => p.id === view.myId); }
@@ -828,7 +849,10 @@
       ${host ? `
       <div class="card">
         <h3>Ambiance de la soirée</h3>
-        <div class="amb" id="amb">${Object.entries(AMB).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
+        <div class="amb" id="amb">${Object.entries(AMB).filter(([, a]) => !a.occasion).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
+        <h3 style="margin-top:6px">Spécial occasion</h3>
+        <div class="amb occ">${Object.entries(AMB).filter(([, a]) => a.occasion).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b></button>`).join('')}</div>
+        <p class="mute small">🔒 = gratuit en regardant une pub (ouvert 24 h).</p>
       </div>
       <button id="start" class="primary big">⚡ Lancer la partie</button>
       <p class="mute small center">${H.settings.count} manches, toutes les catégories disponibles. Tout se règle ci-dessous.</p>
@@ -846,7 +870,7 @@
       <p class="mute small" id="catsNote"></p>` : `
       <div class="wait">Ambiance : <b>${esc(AMB[s.ambiance]?.nom || '')}</b><br>En attente du lancement par l'hôte…</div>
       ${det('photos', '🖼️ Mes photos (facultatif)', photos)}`}
-      ${s.ambiance === 'coquin' ? '<div class="banner">🔞 Cette partie contient des questions coquines réservées aux adultes. Chacun peut passer une question qui le met mal à l’aise.</div>' : ''}
+      ${AMB[s.ambiance] && AMB[s.ambiance].adulte ? '<div class="banner">🔞 Cette partie contient des questions coquines réservées aux adultes. Chacun peut passer une question qui le met mal à l’aise.</div>' : ''}
       <div id="lost"></div>`;
   }
 
@@ -895,13 +919,20 @@
   }
 
   function revealHTML() {
-    const s = view.s, r = s.reveal;
+    const s = view.s, r = s.reveal, me = myPlayer() || {};
+    const maxN = r.tally ? Math.max(1, ...r.tally.map((t) => t.n)) : 1;
+    const jokerBtn = s.phase === 'reveal' && !me.joker && (me.jokers || 0) < 3 && s.step + 1 < s.total
+      ? `<button id="jokerBtn" class="joker">🃏 Joker ×2 pour la prochaine manche <small>📺 pub · ${3 - (me.jokers || 0)} restant${3 - (me.jokers || 0) > 1 ? 's' : ''}</small></button>`
+      : me.joker ? '<p class="center ok small">🃏 Ton joker ×2 est prêt pour la prochaine manche</p>' : '';
     return `${header()}
+      ${r.question ? `<p class="center mute small">${esc(r.question)}</p>` : ''}
+      ${r.tally ? `<div class="tally">${r.tally.map((t, i) => `<div class="trow pop" style="animation-delay:${0.3 + i * 0.45}s"><span>${esc(t.name)}</span><div class="tbar"><i style="width:${Math.round((t.n / maxN) * 100)}%;animation-delay:${0.3 + i * 0.45}s"></i></div><b>${t.n}</b></div>`).join('')}</div>` : ''}
       <p class="mute center">${esc(r.title || 'La bonne réponse')}</p>
-      <div class="answer">${esc(r.answer)}</div>
-      <p class="center">${esc(r.label || '')}</p>
+      <div class="answer suspense" style="animation-delay:${r.tally ? 0.6 + r.tally.length * 0.45 : 1.4}s">${esc(r.answer)}</div>
+      <p class="center pop" style="animation-delay:${r.tally ? 0.8 + r.tally.length * 0.45 : 1.6}s">${esc(r.label || '')}</p>
       ${r.credit ? '<p class="credit">Source des chiffres : <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a></p>' : ''}
-      <div class="results">${r.results.map((x) => `<div class="res"><span><b>${esc(x.name)}</b> · <span class="mute">${esc(x.shown)}</span></span><span class="pts ${x.pts ? '' : 'zero'}">+${x.pts}</span></div>`).join('')}</div>
+      <div class="results">${r.results.map((x, i) => `<div class="res pop ${x.id === view.myId ? 'mine' : ''}" style="animation-delay:${1.8 + i * 0.15}s"><span><b>${esc(x.name)}</b> · <span class="mute">${esc(x.shown)}</span></span><span class="pts ${x.pts ? '' : 'zero'}">+${x.pts}</span></div>`).join('')}</div>
+      ${jokerBtn}
       <div class="card"><h3>Classement</h3><div class="scores" id="scores"></div></div>
       ${isHost() ? '<button id="skip" class="primary">Suivant ▶</button>' : '<p class="mute center small">La suite arrive…</p>'}`;
   }
@@ -995,7 +1026,7 @@
     if (lost) lost.innerHTML = view.lost ? '<div class="banner">Connexion perdue avec l’hôte, reconnexion… Si l’hôte ne revient pas, un autre joueur reprend la partie automatiquement.</div>' : '';
     if (!s || view.screen !== 'game') return;
     const pl = document.getElementById('players');
-    if (pl) pl.innerHTML = s.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}"><i class="dot ${p.net || ''}"></i>${p.id === s.hostId ? '👑 ' : ''}${esc(p.name)}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
+    if (pl) pl.innerHTML = s.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}"><i class="dot ${p.net || ''}"></i>${p.id === s.hostId ? '👑 ' : ''}${esc(p.name)}${p.joker ? ' 🃏' : ''}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
     const th = document.getElementById('thumbs');
     if (th) th.innerHTML = view.myPhotos.map((d) => `<img src="${d}" alt="">`).join('');
     const pb = document.getElementById('pickPhotos');
@@ -1024,12 +1055,55 @@
     if (sc) sc.innerHTML = s.players.slice().sort((a, b) => b.score - a.score).map((p, i) => `<div class="score ${p.id === view.myId ? 'me' : ''}"><span>${i + 1}. ${esc(p.name)}</span><span>${p.score}</span></div>`).join('');
   }
 
-  // Barre de temps
+  // --- Sons (générés, sans fichier) et vibrations -------------------------------
+  const sfx = {
+    ctx: null,
+    on: store.get('tdt-son', '1') === '1',
+    unlock() { try { if (!sfx.ctx) sfx.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (sfx.ctx.state === 'suspended') sfx.ctx.resume(); } catch { /* pas d'audio */ } },
+    note(freq, start, dur, type = 'sine', vol = 0.18) {
+      if (!sfx.on || !sfx.ctx) return;
+      const t0 = sfx.ctx.currentTime + start, o = sfx.ctx.createOscillator(), gn = sfx.ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      gn.gain.setValueAtTime(0.0001, t0); gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.02); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(gn).connect(sfx.ctx.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+    },
+    tick() { sfx.note(880, 0, 0.08, 'square', 0.06); },
+    good() { sfx.note(660, 0, 0.15); sfx.note(990, 0.12, 0.3); buzz([40, 40, 80]); },
+    bad() { sfx.note(220, 0, 0.25, 'sawtooth', 0.08); sfx.note(180, 0.18, 0.3, 'sawtooth', 0.08); buzz(200); },
+    drum() { for (let i = 0; i < 10; i++) sfx.note(140 + (i % 2) * 20, i * 0.11, 0.09, 'triangle', 0.12); },
+    fanfare() { [523, 659, 784, 1047].forEach((f, i) => sfx.note(f, i * 0.16, i === 3 ? 0.6 : 0.2, 'triangle', 0.2)); buzz([80, 60, 80, 60, 200]); }
+  };
+  function buzz(p) { try { if (sfx.on && navigator.vibrate) navigator.vibrate(p); } catch { /* */ } }
+  document.addEventListener('pointerdown', sfx.unlock, { passive: true });
+  const muteBtn = document.createElement('button');
+  muteBtn.className = 'mute-btn'; muteBtn.setAttribute('aria-label', 'Son');
+  const setMute = () => { muteBtn.textContent = sfx.on ? '🔊' : '🔇'; };
+  muteBtn.onclick = () => { sfx.on = !sfx.on; store.set('tdt-son', sfx.on ? '1' : '0'); setMute(); sfx.unlock(); };
+  setMute(); document.body.appendChild(muteBtn);
+
+  // Réactions sonores à chaque nouvel écran
+  let lastSoundKey = '';
+  function soundFor(s) {
+    const k = s.phase + '|' + s.qid;
+    if (k === lastSoundKey) return;
+    lastSoundKey = k;
+    if (s.phase === 'reveal') {
+      sfx.drum();
+      const mine = s.reveal && s.reveal.results.find((x) => x.id === view.myId);
+      setTimeout(() => { if (view.s && view.s.phase === 'reveal') (mine && mine.pts > 0 ? sfx.good() : mine ? sfx.bad() : null); }, 1300);
+    } else if (s.phase === 'end') sfx.fanfare();
+  }
+
+  // Barre de temps + tic-tac des 5 dernières secondes
+  let lastTickSec = -1;
   (function tick() {
     const bar = document.getElementById('bar');
     if (bar && view.s) {
-      const frac = Math.max(0, Math.min(1, (view.deadline - Date.now()) / (view.s.dur || 1)));
+      const left = view.deadline - Date.now();
+      const frac = Math.max(0, Math.min(1, left / (view.s.dur || 1)));
       bar.style.transform = `scaleX(${frac})`;
+      const sec = Math.ceil(left / 1000);
+      if ((view.s.phase === 'question' || view.s.phase === 'write') && sec <= 5 && sec > 0 && sec !== lastTickSec) { lastTickSec = sec; sfx.tick(); }
     }
     requestAnimationFrame(tick);
   })();
@@ -1075,7 +1149,7 @@
     document.querySelectorAll('[data-amb]').forEach((b) => b.addEventListener('click', () => {
       const k = b.dataset.amb, a = AMB[k];
       if (a.pack && !packs.has(a.pack)) return openUnlock(a.pack);
-      if (k === 'coquin' && !confirmAdult()) return;
+      if (a.adulte && !confirmAdult(k)) return;
       H.settings.ambiance = k; hostBroadcast(); view.key = ''; render();
     }));
     document.querySelectorAll('[data-unlock]').forEach((b) => b.addEventListener('click', () => openUnlock(b.dataset.unlock)));
@@ -1094,6 +1168,11 @@
     on('skip', 'click', () => send({ t: 'skip' }));
     on('again', 'click', () => send({ t: 'again' }));
     on('shareCard', 'click', shareCard);
+    on('jokerBtn', 'click', () => {
+      const done = () => { closeModal(); send({ t: 'joker' }); const jb = document.getElementById('jokerBtn'); if (jb) jb.outerHTML = '<p class="center ok small">🃏 Ton joker ×2 est prêt pour la prochaine manche</p>'; toast('🃏 Joker ×2 activé pour la prochaine manche'); track('joker-pub'); };
+      if (ads.real()) ads.rewarded(done, () => toast('Pub indisponible pour le moment'));
+      else playDemoAd(done, 'Récupérer mon joker');
+    });
     on('newGame', 'click', () => { location.href = location.pathname + (params.get('peerhost') ? `?peerhost=${params.get('peerhost')}&peerport=${params.get('peerport') || 9000}` : ''); });
     on('quit', 'click', () => { location.href = location.pathname + (params.get('peerhost') ? `?peerhost=${params.get('peerhost')}&peerport=${params.get('peerport') || 9000}` : ''); });
     document.querySelectorAll('[data-choice]').forEach((b) => b.addEventListener('click', () => {
@@ -1136,11 +1215,11 @@
   function closeModal() { const m = document.getElementById('modal'); if (m) m.remove(); }
   function refreshLobby() { view.rev = (view.rev || 0) + 1; view.key = ''; render(); }
   let adult = false;
-  function confirmAdult() {
+  function confirmAdult(k) {
     if (adult) return true;
-    const m = modal(`<h3>🔞 Réservé aux adultes</h3><p>L’ambiance Coquine propose des questions osées. Tous les joueurs doivent avoir 18 ans ou plus et être d’accord pour y jouer.</p>
+    const m = modal(`<h3>🔞 Réservé aux adultes</h3><p>Cette ambiance propose des questions osées. Tous les joueurs doivent avoir 18 ans ou plus et être d’accord pour y jouer.</p>
       <button class="primary" id="adultYes">Tous les joueurs ont 18 ans ou plus</button><button class="ghost" id="adultNo">Annuler</button>`);
-    m.querySelector('#adultYes').onclick = () => { adult = true; closeModal(); H.settings.ambiance = 'coquin'; hostBroadcast(); refreshLobby(); };
+    m.querySelector('#adultYes').onclick = () => { adult = true; closeModal(); H.settings.ambiance = k || 'coquin'; hostBroadcast(); refreshLobby(); };
     m.querySelector('#adultNo').onclick = closeModal;
     return false;
   }
@@ -1157,10 +1236,10 @@
       else playDemoAd(done);
     };
   }
-  function playDemoAd(onReward) {
+  function playDemoAd(onReward, label) {
     let left = CFG.pubDemoSecondes;
     const m = modal(`<h3>Publicité</h3><div class="adbox"><b>Espace publicitaire</b><span>(démonstration : une vraie régie afficherait une vidéo ici)</span></div>
-      <p class="center" id="adLeft"></p><button class="primary" id="adDone" disabled>Récupérer mon pack</button>`);
+      <p class="center" id="adLeft"></p><button class="primary" id="adDone" disabled>${label || 'Récupérer mon pack'}</button>`);
     const tick = () => {
       const el = m.querySelector('#adLeft'); if (!el) return clearInterval(t);
       el.textContent = left > 0 ? `Encore ${left} s…` : 'Merci !';

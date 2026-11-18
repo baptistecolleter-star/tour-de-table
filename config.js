@@ -4,7 +4,12 @@
 window.TDT_CONFIG = {
   packs: {
     coquin: { nom: '🔥 Pack Coquin', desc: 'Près de 250 questions osées pour adultes (18+), pour pimenter la soirée.' },
-    perso: { nom: '✏️ Questions personnalisées', desc: 'Écris tes propres questions : elles se mélangent à celles du jeu.' }
+    perso: { nom: '✏️ Questions personnalisées', desc: 'Écris tes propres questions : elles se mélangent à celles du jeu.' },
+    noel: { nom: '🎄 Noël en famille', desc: '75 questions de fêtes : cadeaux, bûche et repas de famille.' },
+    anniv: { nom: '🎂 Anniversaire', desc: '75 questions pour fêter quelqu’un comme il se doit.' },
+    evjf: { nom: '💍 EVJF / EVG', desc: '75 questions pour enterrer une vie de jeune fille ou de garçon (18+).' },
+    afterwork: { nom: '🍻 Afterwork', desc: '75 questions entre collègues.' },
+    etudiant: { nom: '🎓 Soirée étudiante', desc: '75 questions sur les partiels, la coloc et les soirées.' }
   },
   // Un pack débloqué par une pub reste ouvert pendant (heures) :
   dureePub: 24,
