@@ -18,5 +18,8 @@ window.TDT_CONFIG = {
   // et l'accès « H5 Games Ads » approuvés par Google. Vide = mode démo.
   adsenseClient: '',
   // true = pubs de test Google (à utiliser pendant la mise au point)
-  adsenseTest: true
+  adsenseTest: true,
+  // Compteur anonyme sans cookie : code GoatCounter (ex. 'tourdetable' pour
+  // tourdetable.goatcounter.com). Vide = aucun comptage.
+  goatcounter: ''
 };

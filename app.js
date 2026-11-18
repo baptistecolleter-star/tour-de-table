@@ -9,6 +9,9 @@
 
   // --- Réglages réseau -------------------------------------------------------
   const PREFIX = 'tourdetable-v1-';
+  // Chaque reprise de partie par un autre joueur ouvre une « génération » de salle : 1234, 1234-2, 1234-3…
+  const peerId = (pin, gen) => PREFIX + pin + (gen > 1 ? '-' + gen : '');
+  const MAX_GEN = 6;
   const PEER_OPTS = params.get('peerhost')
     ? { host: params.get('peerhost'), port: +(params.get('peerport') || 9000), path: '/', secure: false, debug: 1, config: { iceServers: [] } }
     : { debug: 1 };
@@ -85,7 +88,7 @@
   let client = null;   // connexion du joueur vers l'hôte
 
   function send(msg) {
-    if (H) hostAction('p0', msg);
+    if (H) hostAction(H.hostId, msg);
     else if (client && client.conn && client.conn.open) client.conn.send(msg);
     else toast('Connexion perdue, reconnexion…');
   }
@@ -95,8 +98,8 @@
   // ============================================================================
   function hostCreate() {
     H = {
-      peer: null, pin: '', conns: new Map(), connObjs: new Map(),
-      players: [{ id: 'p0', name: me.name, token: me.token, score: 0, connected: true, photos: [] }],
+      peer: null, pin: '', gen: 1, hostId: 'p0', conns: new Map(), connObjs: new Map(), lastSnap: 0, aloneSince: 0,
+      players: [{ id: 'p0', name: me.name, token: me.token, score: 0, connected: true, photos: view.myPhotos.slice() }],
       seq: 1, phase: 'lobby', settings: { count: 10, ambiance: 'decontracte', cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
       plan: [], step: 0, qid: 0, q: null, answers: {}, endsAt: 0, timer: null, reveal: null,
       used: new Set(), auteur: null
@@ -105,18 +108,20 @@
     view.screen = 'connecting';
     render();
     openHostPeer(0);
-    keepAwake();
-    window.addEventListener('beforeunload', (e) => { if (H && H.players.length > 1) { e.preventDefault(); e.returnValue = ''; } });
+    hostStartLoops();
+    track('salle-creee');
   }
 
-  function openHostPeer(tries) {
-    H.pin = String(1000 + rnd(9000));
-    const peer = new Peer(PREFIX + H.pin, PEER_OPTS);
+  // Ouvre la salle. pinFixe : reprise d'une partie existante (pas de nouveau code).
+  function openHostPeer(tries, pinFixe, onTaken) {
+    if (!pinFixe) H.pin = String(1000 + rnd(9000));
+    const peer = new Peer(peerId(H.pin, H.gen), PEER_OPTS);
     H.peer = peer;
     peer.on('open', () => { hostBroadcast(); });
     peer.on('connection', (conn) => hostConn(conn));
     peer.on('disconnected', () => { setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500); });
     peer.on('error', (e) => {
+      if (e.type === 'unavailable-id' && pinFixe) { peer.destroy(); if (onTaken) onTaken(); return; }
       if (e.type === 'unavailable-id' && tries < 5) { peer.destroy(); openHostPeer(tries + 1); return; }
       if (e.type === 'peer-unavailable') return;
       console.warn('peer error', e.type, e);
@@ -129,12 +134,20 @@
   function hostConn(conn) {
     H.connObjs.set(conn.connectionId, conn);
     conn.on('data', (msg) => {
-      if (!msg || typeof msg !== 'object') return;
+      if (!H || !msg || typeof msg !== 'object') return;
       if (msg.t === 'join') return hostJoin(conn, msg);
       const pid = H.conns.get(conn.connectionId);
-      if (pid) hostAction(pid, msg);
+      if (!pid) return;
+      if (msg.t === 'hb') {
+        const p = H.players.find((x) => x.id === pid);
+        if (p) { p.lastSeen = Date.now(); if (typeof msg.rtt === 'number') p.rtt = Math.round(msg.rtt); }
+        try { conn.send({ t: 'hb', ts: msg.ts }); } catch { /* fermée */ }
+        return;
+      }
+      hostAction(pid, msg);
     });
     conn.on('close', () => {
+      if (!H) return;
       const pid = H.conns.get(conn.connectionId);
       H.conns.delete(conn.connectionId);
       H.connObjs.delete(conn.connectionId);
@@ -154,10 +167,11 @@
       p = { id: 'p' + H.seq++, name: n, token, score: 0, connected: true, photos: [] };
       H.players.push(p);
     }
-    p.connected = true;
+    p.connected = true; p.lastSeen = Date.now();
     H.conns.set(conn.connectionId, p.id);
+    track('joueur-rejoint');
     if (H.q && H.q.mediaKey) conn.send({ t: 'media', key: H.q.mediaKey, data: H.q.mediaData });
-    hostBroadcast();
+    hostBroadcast(true);
   }
 
   function hostAction(pid, msg) {
@@ -180,7 +194,7 @@
       hostBroadcast();
       return hostCheckDone();
     }
-    if (pid !== 'p0') return; // les commandes ci-dessous sont réservées à l'hôte
+    if (pid !== H.hostId) return; // les commandes ci-dessous sont réservées à l'hôte
     if (msg.t === 'start') return hostStart();
     if (msg.t === 'skip') return hostSkip();
     if (msg.t === 'again') {
@@ -245,6 +259,7 @@
     }
     H.players.forEach((p) => { p.score = 0; });
     H.plan = plan; H.step = 0;
+    track('partie-lancee');
     hostStep();
   }
 
@@ -464,7 +479,7 @@
       if (H.q && H.q.type === 'auteur' && H.auteur && H.auteur.queue.length) return hostNextAuteur();
       const done = H.step + 1, every = +CFG.pubToutesLesManches || 0;
       if (every && done % every === 0 && done < H.plan.length) {
-        H.phase = 'pub'; H.q = null; H.reveal = null; H.qid++;
+        H.phase = 'pub'; H.q = null; H.reveal = null; H.qid++; track('pause-pub');
         hostTimer(+CFG.pubDureeSecondes || 8, hostNext);
         return hostBroadcast();
       }
@@ -477,6 +492,7 @@
   function hostEnd() {
     clearTimeout(H.timer);
     H.phase = 'end'; H.q = null; H.reveal = null; H.qid++;
+    track('podium');
     hostBroadcast();
   }
 
@@ -490,8 +506,10 @@
       phase: H.phase, pin: H.pin, qid: H.qid, step: H.step, total: H.plan.length,
       cat: H.plan[H.step] || null,
       remaining: Math.max(0, H.endsAt - Date.now()), dur: H.dur || 1,
+      hostId: H.hostId, gen: H.gen,
       players: H.players.map((p) => ({
         id: p.id, name: p.name, score: p.score, connected: p.connected, photos: p.photos.length,
+        net: p.id === H.hostId ? 'hote' : !p.connected ? 'perdu' : (Date.now() - (p.lastSeen || 0) > 7000 || (p.rtt || 0) > 800) ? 'faible' : 'ok', rtt: p.rtt || null,
         answered: H.phase === 'write' ? !!(H.auteur && p.id in H.auteur.texts) : p.id in H.answers,
         eligible: H.phase === 'question' ? hostEligible(p.id) : H.phase === 'write' ? p.connected : false
       })),
@@ -500,11 +518,97 @@
     };
   }
 
-  function hostBroadcast() {
+  function hostBroadcast(forceSnap) {
     if (!H) return;
-    hostEachConn((conn, pid) => conn.send({ t: 'state', s: publicState(pid) }));
-    onState(publicState('p0'));
+    const sendSnap = forceSnap || Date.now() - H.lastSnap > 1500 || H.phase !== H.snapPhase || H.qid !== H.snapQid;
+    const snap = sendSnap ? snapshot() : null;
+    if (sendSnap) { H.lastSnap = Date.now(); H.snapPhase = H.phase; H.snapQid = H.qid; }
+    hostEachConn((conn, pid) => { conn.send({ t: 'state', s: publicState(pid) }); if (snap) conn.send({ t: 'snap', d: snap }); });
+    onState(publicState(H.hostId));
   }
+
+  // Copie de la partie envoyée aux joueurs : si l'hôte décroche, l'un d'eux reprend
+  // la partie là où elle en était (scores, manche en cours, questions déjà posées).
+  function snapshot() {
+    const q = H.q ? Object.assign({}, H.q, { mediaData: null }) : null;
+    // JSON aller-retour : retire les valeurs « undefined » que l'envoi réseau refuse
+    return JSON.parse(JSON.stringify({
+      pin: H.pin, gen: H.gen, hostId: H.hostId, seq: H.seq, phase: H.phase, settings: H.settings, targets: H.targets,
+      plan: H.plan, step: H.step, qid: H.qid, q, answers: H.answers, remaining: Math.max(0, H.endsAt - Date.now()), dur: H.dur,
+      reveal: H.reveal, used: [...H.used], auteur: H.auteur,
+      players: H.players.map((p) => ({ id: p.id, name: p.name, token: p.token, score: p.score, connected: p.connected }))
+    }));
+  }
+
+  function hostStartLoops() {
+    if (H.loops) return;
+    H.loops = true;
+    keepAwake();
+    if (!window.__tdtUnload) {
+      window.__tdtUnload = true;
+      window.addEventListener('beforeunload', (e) => { if (H && H.players.length > 1) { e.preventDefault(); e.returnValue = ''; } });
+    }
+    const mine = H;
+    // Qualité des connexions + détection d'un retour après une coupure de l'hôte
+    const loop = setInterval(() => {
+      if (H !== mine) return clearInterval(loop);
+      if (H.players.length > 1) hostBroadcast(true);
+      const open = [...H.connObjs.values()].some((c) => c.open);
+      const others = H.players.some((p) => p.id !== H.hostId);
+      if (others && !open) {
+        H.aloneSince = H.aloneSince || Date.now();
+        if (Date.now() - H.aloneSince > 9000) probeSuccessor();
+      } else H.aloneSince = 0;
+    }, 3000);
+  }
+
+  // L'hôte revient après une coupure : si un autre joueur a repris la partie, il la rejoint.
+  function probeSuccessor() {
+    if (!H || H.probing || !H.peer || H.peer.destroyed || H.peer.disconnected) return;
+    H.probing = true;
+    const mine = H;
+    const c = H.peer.connect(peerId(H.pin, H.gen + 1), { reliable: true });
+    const t = setTimeout(() => { try { c.close(); } catch { /* */ } mine.probing = false; }, 6000);
+    c.on('open', () => {
+      clearTimeout(t); c.close();
+      if (H !== mine) return;
+      const pin = H.pin, gen = H.gen + 1;
+      clearTimeout(H.timer);
+      try { H.peer.destroy(); } catch { /* */ }
+      H = null;
+      toast('Un autre joueur a repris la partie, tu la rejoins');
+      joinRoom(pin, gen);
+    });
+    c.on('error', () => { clearTimeout(t); mine.probing = false; });
+  }
+
+  // Un joueur devient le nouvel hôte à partir de la dernière copie reçue.
+  function takeOver(snap) {
+    const mine = snap.players.find((p) => p.token === me.token);
+    if (!mine) return false;
+    const old = client; client = null;
+    try { clearInterval(old.hb); old.peer.destroy(); } catch { /* */ }
+    H = {
+      peer: null, pin: snap.pin, gen: snap.gen + 1, hostId: mine.id, conns: new Map(), connObjs: new Map(), lastSnap: 0, aloneSince: 0,
+      players: snap.players.map((p) => Object.assign({}, p, { connected: p.id === mine.id, photos: p.id === mine.id ? view.myPhotos.slice() : [], lastSeen: Date.now() })),
+      seq: snap.seq, phase: snap.phase, settings: snap.settings, targets: snap.targets || {}, plan: snap.plan, step: snap.step, qid: snap.qid + 1,
+      q: snap.q, answers: snap.answers || {}, endsAt: 0, dur: snap.dur, timer: null, reveal: snap.reveal, used: new Set(snap.used || []), auteur: snap.auteur
+    };
+    if (H.q && H.q.mediaKey) H.q.mediaData = view.media[H.q.mediaKey];
+    view.myId = mine.id; view.lost = false;
+    openHostPeer(0, true, () => { H = null; joinRoom(snap.pin, snap.gen + 1); });
+    hostStartLoops();
+    // Relance du chrono de la phase en cours, avec de la marge pour les reconnexions
+    const left = Math.max(12000, snap.remaining || 0) / 1000;
+    if (H.phase === 'question') hostTimer(left, hostEndQuestion);
+    else if (H.phase === 'write') hostTimer(left, hostEndWrite);
+    else if (H.phase === 'reveal' || H.phase === 'pub') hostTimer(6, hostNext);
+    hostBroadcast();
+    toast('L’hôte a décroché : tu reprends la partie 👑');
+    track('reprise-hote');
+    return true;
+  }
+
 
   async function keepAwake() {
     if (!('wakeLock' in navigator)) return;
@@ -516,54 +620,97 @@
   // ============================================================================
   //  JOUEUR
   // ============================================================================
-  function joinRoom(pin) {
-    view.screen = 'connecting'; view.err = ''; view.pin = pin; render();
+  function joinRoom(pin, gen) {
+    if (!view.s) view.screen = 'connecting';
+    view.err = ''; view.pin = pin; render();
+    const prev = client;
+    if (prev) { try { clearInterval(prev.hb); prev.peer.destroy(); } catch { /* */ } }
     const peer = new Peer(undefined, PEER_OPTS);
-    client = { peer, conn: null, pin, retries: 0, joined: false };
+    const c = client = { peer, conn: null, pin, gen: gen || 1, retries: 0, joined: false, lastMsg: 0, snap: prev && prev.snap, lostSince: 0 };
     peer.on('open', () => connectToHost());
     peer.on('error', (e) => {
+      if (client !== c) return;
       if (e.type === 'peer-unavailable') {
-        if (client.joined) return scheduleReconnect();
-        view.screen = 'home'; view.err = 'Aucune salle ouverte avec le code ' + pin + '.'; client = null; peer.destroy(); return render();
+        if (c.joined || c.migrating) return hostLost();
+        // Salle introuvable : elle a peut-être été reprise par un autre joueur (génération suivante)
+        if (c.gen < MAX_GEN) { c.gen++; return connectToHost(); }
+        view.screen = 'home'; view.err = 'Aucune salle ouverte avec le code ' + pin + '.'; client = null; clearInterval(c.hb); peer.destroy(); return render();
       }
       console.warn('peer error', e.type, e);
-      if (!client.joined && view.screen === 'connecting') {
-        view.screen = 'home'; view.err = 'Connexion impossible. Vérifie ton réseau et réessaie.'; client = null; peer.destroy(); render();
-      } else scheduleReconnect();
+      if (!c.joined && view.screen === 'connecting') {
+        view.screen = 'home'; view.err = 'Connexion impossible. Vérifie ton réseau et réessaie.'; client = null; clearInterval(c.hb); peer.destroy(); render();
+      } else hostLost();
     });
     peer.on('disconnected', () => { setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500); });
+    c.hb = setInterval(() => heartbeat(c), 3000);
   }
 
   function connectToHost() {
-    const conn = client.peer.connect(PREFIX + client.pin, { reliable: true });
-    client.conn = conn;
-    const t = setTimeout(() => { if (!conn.open) { conn.close(); if (client.joined) scheduleReconnect(); else { view.screen = 'home'; view.err = "La salle ne répond pas. Le téléphone de l'hôte est peut-être en veille."; render(); } } }, 15000);
+    const c = client;
+    if (!c || c.peer.destroyed) return;
+    const conn = c.peer.connect(peerId(c.pin, c.gen), { reliable: true });
+    c.conn = conn;
+    const t = setTimeout(() => {
+      if (conn.open || client !== c) return;
+      try { conn.close(); } catch { /* */ }
+      if (c.joined || c.migrating) hostLost();
+      else { view.screen = 'home'; view.err = "La salle ne répond pas. Le téléphone de l'hôte est peut-être en veille."; client = null; clearInterval(c.hb); c.peer.destroy(); render(); }
+    }, 12000);
     conn.on('open', () => {
       clearTimeout(t);
-      client.joined = true; client.retries = 0; view.lost = false;
+      c.joined = true; c.retries = 0; c.lostSince = 0; c.migrating = false; c.lastMsg = Date.now();
+      view.lost = false; updateDynamic();
       conn.send({ t: 'join', name: me.name, token: me.token });
       if (view.myPhotos.length) conn.send({ t: 'photos', list: view.myPhotos });
     });
     conn.on('data', (msg) => {
-      if (msg.t === 'state') onState(msg.s);
+      if (client !== c || c.conn !== conn) return;
+      c.lastMsg = Date.now();
+      if (msg.t === 'state') { c.gen = msg.s.gen || c.gen; onState(msg.s); }
+      else if (msg.t === 'snap') c.snap = msg.d;
+      else if (msg.t === 'hb') { c.rtt = Date.now() - msg.ts; if (view.pingWanted) { view.pingWanted = false; showPing(c.rtt); } }
       else if (msg.t === 'media') { view.media[msg.key] = msg.data; if (view.s) { view.key = ''; render(); } }
-      else if (msg.t === 'error') { view.screen = 'home'; view.err = msg.msg; client.peer.destroy(); client = null; render(); }
+      else if (msg.t === 'error') { view.screen = 'home'; view.err = msg.msg; clearInterval(c.hb); c.peer.destroy(); client = null; render(); }
     });
-    conn.on('close', () => { if (client && client.conn === conn) scheduleReconnect(); });
+    conn.on('close', () => { if (client === c && c.conn === conn) hostLost(); });
   }
 
-  function scheduleReconnect() {
-    if (!client || client.reconnecting) return;
+  // Battement toutes les 3 s : mesure la latence et détecte un hôte muet
+  function heartbeat(c) {
+    if (client !== c) return clearInterval(c.hb);
+    if (c.conn && c.conn.open) { try { c.conn.send({ t: 'hb', ts: Date.now(), rtt: c.rtt }); } catch { /* */ } }
+    if (c.joined && c.lastMsg && Date.now() - c.lastMsg > 7000) hostLost();
+  }
+
+  // L'hôte ne répond plus : on retente, puis le premier joueur de la liste reprend la partie.
+  function hostLost() {
+    const c = client;
+    if (!c || c.recovering) return;
+    c.recovering = true;
+    c.lostSince = c.lostSince || Date.now();
     view.lost = true; updateDynamic();
-    client.reconnecting = true;
-    client.retries++;
     setTimeout(() => {
-      if (!client) return;
-      client.reconnecting = false;
-      if (client.retries > 20) { view.screen = 'home'; view.err = "La connexion avec l'hôte est perdue."; render(); return; }
-      if (client.peer.disconnected) client.peer.reconnect();
+      if (client !== c) return;
+      c.recovering = false;
+      const lostFor = Date.now() - c.lostSince;
+      const snap = c.snap;
+      if (snap && lostFor > 5000) {
+        // Ordre de succession : joueurs connectés (hors ancien hôte), dans l'ordre d'arrivée
+        const order = snap.players.filter((p) => p.connected && p.id !== snap.hostId).map((p) => p.token);
+        const rank = order.indexOf(me.token);
+        if (rank === 0 || (rank > 0 && lostFor > 5000 + rank * 6000)) { if (takeOver(snap)) return; }
+        // Sinon on cherche la salle reprise par un autre joueur
+        c.migrating = true;
+        c.gen = snap.gen + 1;
+      }
+      if (lostFor > 90000) { view.screen = 'home'; view.err = 'La connexion avec la partie est perdue.'; client = null; clearInterval(c.hb); c.peer.destroy(); render(); return; }
+      if (c.peer.disconnected && !c.peer.destroyed) c.peer.reconnect();
       connectToHost();
     }, 2500);
+  }
+
+  function showPing(rtt) {
+    toast(`Connexion à l’hôte : ${rtt} ms ${rtt < 300 ? '✅ parfaite' : rtt < 800 ? '🟠 correcte' : '🔴 lente, rapproche-toi du Wi-Fi'}`);
   }
 
   // ============================================================================
@@ -638,6 +785,8 @@
       <div class="card">
         <h3>Joueurs</h3>
         <div class="players" id="players"></div>
+        <button id="pingBtn" class="small ghost" style="align-self:flex-start">📶 Tester ma connexion</button>
+        <p class="mute small">🟢 bonne connexion · 🟠 connexion faible · ⚪ déconnecté</p>
       </div>
       <div class="card">
         <h3>🖼️ Tes photos pour la manche Galerie</h3>
@@ -754,10 +903,10 @@
   function updateDynamic() {
     const s = view.s;
     const lost = document.getElementById('lost');
-    if (lost) lost.innerHTML = view.lost ? '<div class="banner">Connexion perdue avec l’hôte, reconnexion…</div>' : '';
+    if (lost) lost.innerHTML = view.lost ? '<div class="banner">Connexion perdue avec l’hôte, reconnexion… Si l’hôte ne revient pas, un autre joueur reprend la partie automatiquement.</div>' : '';
     if (!s || view.screen !== 'game') return;
     const pl = document.getElementById('players');
-    if (pl) pl.innerHTML = s.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}">${p.id === 'p0' ? '👑 ' : ''}${esc(p.name)}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
+    if (pl) pl.innerHTML = s.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}"><i class="dot ${p.net || ''}"></i>${p.id === s.hostId ? '👑 ' : ''}${esc(p.name)}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
     const th = document.getElementById('thumbs');
     if (th) th.innerHTML = view.myPhotos.map((d) => `<img src="${d}" alt="">`).join('');
     const pb = document.getElementById('pickPhotos');
@@ -841,6 +990,16 @@
     }));
     document.querySelectorAll('[data-unlock]').forEach((b) => b.addEventListener('click', () => openUnlock(b.dataset.unlock)));
     on('editPerso', 'click', openPerso);
+    on('pingBtn', 'click', () => {
+      if (H) {
+        const others = H.players.filter((p) => p.id !== H.hostId);
+        const weak = others.filter((p) => p.connected && ((p.rtt || 0) > 800 || Date.now() - (p.lastSeen || 0) > 7000));
+        const off = others.filter((p) => !p.connected);
+        return toast(others.length ? `Tu es l’hôte · ${others.length - off.length} connecté(s)${weak.length ? ' · faible : ' + weak.map((p) => p.name).join(', ') : ' · tout est bon ✅'}${off.length ? ' · déconnecté : ' + off.map((p) => p.name).join(', ') : ''}` : 'Tu es l’hôte : invite des joueurs !');
+      }
+      if (client && client.conn && client.conn.open) { view.pingWanted = true; client.conn.send({ t: 'hb', ts: Date.now(), rtt: client.rtt }); }
+      else toast('Pas connecté à l’hôte pour le moment');
+    });
     on('start', 'click', () => send({ t: 'start' }));
     on('skip', 'click', () => send({ t: 'skip' }));
     on('again', 'click', () => send({ t: 'again' }));
@@ -863,6 +1022,13 @@
       if (!t) return toast('Écris quelque chose !');
       send({ t: 'write', text: t });
     });
+  }
+
+  // --- Compteur anonyme (GoatCounter, sans cookie) : inactif tant que non configuré ---
+  function track(evt) {
+    const code = CFG && CFG.goatcounter;
+    if (!code) return;
+    try { new Image().src = `https://${code}.goatcounter.com/count?p=${encodeURIComponent('/evenement/' + evt)}&t=${encodeURIComponent(evt)}&e=true&rnd=${Math.random().toString(36).slice(2)}`; } catch { /* */ }
   }
 
   // --- Fenêtres : déblocage des packs et questions personnalisées -----------------
@@ -894,7 +1060,7 @@
       <button class="ghost" id="cancel">Plus tard</button>`);
     m.querySelector('#cancel').onclick = closeModal;
     m.querySelector('#ad').onclick = () => {
-      const done = () => { packs.unlock(id); closeModal(); toast(pk.nom + ' débloqué pour ' + CFG.dureePub + ' h'); refreshLobby(); };
+      const done = () => { track('pub-recompensee'); packs.unlock(id); closeModal(); toast(pk.nom + ' débloqué pour ' + CFG.dureePub + ' h'); refreshLobby(); };
       if (ads.real()) { closeModal(); ads.rewarded(done, () => toast('Pub indisponible pour le moment, réessaie plus tard')); }
       else playDemoAd(done);
     };
@@ -987,5 +1153,5 @@
   }
 
   render();
-  window.__tdt = { view, get H() { return H; } }; // utile pour les tests
+  window.__tdt = { view, get H() { return H; }, dbg: () => client && { snap: !!client.snap, gen: client.gen, lostSince: client.lostSince, joined: client.joined, recovering: client.recovering, migrating: client.migrating, open: client.conn && client.conn.open, peerDisc: client.peer.disconnected } }; // utile pour les tests
 })();

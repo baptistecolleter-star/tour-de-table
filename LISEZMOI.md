@@ -47,9 +47,15 @@ Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikida
 - **Connexion** : PeerJS (WebRTC), avec le serveur public gratuit de PeerJS pour la mise en relation. Ensuite, les données passent directement d'un téléphone à l'autre.
 - **Photos des joueurs** : réduites à 720 px sur le téléphone, ce qui supprime aussi la position GPS. Elles ne sont jamais stockées sur un serveur.
 
+## Fiabilité
+
+- **Indicateur de connexion** : pastille par joueur (🟢 bonne, 🟠 faible, ⚪ déconnecté) et bouton « 📶 Tester ma connexion » dans la salle d'attente.
+- **Si l'hôte décroche** (appel, veille, réseau coupé), le premier joueur arrivé reprend la partie au bout d'environ 12 s : mêmes scores, même manche, même code de salle. Les autres se reconnectent tout seuls. Quand l'ancien hôte revient, il rejoint la partie comme joueur.
+- **Compteur anonyme** (sans cookie) : créer un compte gratuit sur goatcounter.com et mettre le code du site dans `config.js` (`goatcounter`). Événements comptés : salle créée, joueur rejoint, partie lancée, podium, pubs, reprise d'hôte. Vérifier les conditions d'usage de GoatCounter pour un site qui affiche de la publicité.
+
 ## Limites connues du prototype
 
-- Si le téléphone de l'hôte se met en veille ou recharge la page, la partie s'arrête. Le jeu demande à l'écran de rester allumé, mais certains téléphones l'ignorent.
+- Les photos de la Galerie de l'hôte sont perdues s'il décroche (celles des autres joueurs sont renvoyées automatiquement).
 - Sur certains réseaux (4G d'opérateur, Wi-Fi d'entreprise), la connexion directe peut échouer pour un joueur. Le relais gratuit de PeerJS aide, sans garantie.
 - Le serveur public PeerJS est gratuit mais sans garantie de disponibilité.
 

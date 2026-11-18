@@ -120,3 +120,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .adbox span { color: var(--mute); font-size: 13px; }
 .pubpause { display: flex; flex-direction: column; gap: 14px; min-height: 80dvh; justify-content: center; }
 .adbox.big { aspect-ratio: 9 / 12; max-height: 60dvh; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: var(--mute); }
+.dot.ok { background: var(--ok); }
+.dot.faible { background: #ffad3f; }
+.dot.hote { background: var(--acc); }
+.dot.perdu { background: #6b6290; }
