@@ -802,8 +802,13 @@
 
   function homeHTML() {
     return `
-      <div class="brand">Tour de <span>Table</span></div>
-      <p class="tag">Une salle, un code, des manches surprises. Sans appli, sans compte.</p>
+      <div class="home-hero" aria-hidden="true">
+        <div class="hcard"><b>Plus ou moins</b><span>Lequel est le plus haut ?</span><i>⚖️</i></div>
+        <div class="hcard"><b>De 1 à 10</b><span>« J’adore le karaoké. »</span><i>🔟</i></div>
+        <div class="hcard"><b>Qui est le plus susceptible…</b><span>… de rater son train ?</span><i>👉</i></div>
+      </div>
+      <h1 class="logo">Tour de Table</h1>
+      <p class="tag">Le jeu de soirée où vos téléphones deviennent les cartes. Un code, et tout le monde joue.</p>
       <label>Ton pseudo<input id="name" maxlength="16" autocomplete="nickname" value="${esc(me.name)}" placeholder="Ex. Camille"></label>
       <button id="create" class="primary big">⚡ Créer une partie</button>
       <div class="or">ou</div>
@@ -836,7 +841,7 @@
         <div class="thumbs" id="thumbs"></div>`;
     return `
       <div class="top"><span>Salle</span><span>${host ? 'Tu es l’hôte' : 'Joueur'}</span></div>
-      <div class="pin">${esc(s.pin)}</div>
+      <div class="pin" role="img" aria-label="Code de la salle : ${esc(s.pin)}">${[...String(s.pin)].map((d) => `<span>${esc(d)}</span>`).join('')}</div>
       <div class="card">
         <div class="qr">${qrSVG(link)}</div>
         <button id="share" class="small ghost" style="align-self:center">📤 Inviter (WhatsApp, SMS…)</button>
@@ -883,8 +888,8 @@
   function writeHTML() {
     const p = myPlayer() || {};
     return `${header()}
-      <p class="prompt">${esc(view.s.write.prompt)}</p>
-      <p class="mute small">Réponds en secret. Les autres devront deviner que c'est toi… ou se faire piéger.</p>
+      <div class="qcard"><p class="prompt">${esc(view.s.write.prompt)}</p>
+      <p class="mute small">Réponds en secret. Les autres devront deviner que c'est toi… ou se faire piéger.</p></div>
       ${p.answered ? `<div class="wait">Réponse envoyée ✅<br><span class="mute small" id="count"></span></div>` : `
         <textarea id="writeText" maxlength="80" placeholder="Ta réponse (80 caractères max)"></textarea>
         <button id="sendWrite" class="primary">Envoyer</button>`}
@@ -914,8 +919,8 @@
       input = `<div class="${cls}">${q.choices.map((c, i) => `<button data-choice="${i}">${esc(c)}</button>`).join('')}</div>`;
     }
     return `${header()}
-      <p class="prompt">${prompt}</p>
-      ${media}${input}${hostSkipBtn('Fin du chrono')}`;
+      <div class="qcard"><p class="prompt">${prompt}</p>${media}</div>
+      ${input}${hostSkipBtn('Fin du chrono')}`;
   }
 
   function revealHTML() {
@@ -965,41 +970,44 @@
     const s = view.s, W = 1080, Hh = 1920;
     const c = document.createElement('canvas'); c.width = W; c.height = Hh;
     const g = c.getContext('2d');
-    const bg = g.createLinearGradient(0, 0, W, Hh); bg.addColorStop(0, '#2d1d63'); bg.addColorStop(0.55, '#16112b'); bg.addColorStop(1, '#4a1747');
+    const bg = g.createLinearGradient(0, 0, W, Hh); bg.addColorStop(0, '#1a7356'); bg.addColorStop(0.6, '#0f5c46'); bg.addColorStop(1, '#08392b');
     g.fillStyle = bg; g.fillRect(0, 0, W, Hh);
-    const font = (w, px) => `${w} ${px}px ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    const font = (w, px) => w >= 800 ? `${px}px "Bowlby One", "Arial Black", sans-serif` : `${w} ${px}px "Instrument Sans", system-ui, sans-serif`;
     const text = (t, x, y, f, col, align = 'center', maxW = W - 120) => { g.font = f; g.fillStyle = col; g.textAlign = align; g.fillText(t, x, y, maxW); };
     g.font = font(900, 92);
     const w1 = g.measureText('Tour de ').width, w2 = g.measureText('Table').width, xs = (W - w1 - w2) / 2;
-    text('Tour de ', xs, 190, font(900, 92), '#f5f1ff', 'left');
-    text('Table', xs + w1, 190, font(900, 92), '#ffcf3f', 'left');
-    text('Notre soirée du ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }), W / 2, 260, font(600, 40), '#b4a9d9');
+    text('Tour de ', xs, 190, font(900, 92), '#f4efe2', 'left');
+    text('Table', xs + w1, 190, font(900, 92), '#f4efe2', 'left');
+    text('Notre soirée du ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }), W / 2, 260, font(600, 40), '#a9cdbd');
     const ps = s.players.slice().sort((a, b) => b.score - a.score);
-    const cols = [[ps[1], 360, '#3d3270', '🥈'], [ps[0], 480, '#ffcf3f', '🥇'], [ps[2], 290, '#3d3270', '🥉']];
+    const cols = [[ps[1], 360, '#47b8ff', '🥈'], [ps[0], 480, '#ffc22e', '🥇'], [ps[2], 290, '#b79bff', '🥉']];
     const base = 900, bw = 290, gap = 30, x0 = (W - (3 * bw + 2 * gap)) / 2;
     cols.forEach(([p, h, col, medal], i) => {
       if (!p) return;
       const x = x0 + i * (bw + gap);
       g.fillStyle = col; g.beginPath(); g.roundRect ? g.roundRect(x, base - h, bw, h, [28, 28, 0, 0]) : g.rect(x, base - h, bw, h); g.fill();
-      const dark = col === '#ffcf3f';
+      g.lineWidth = 6; g.strokeStyle = '#1e1b16'; g.stroke();
+      const dark = true;
       text(medal, x + bw / 2, base - h + 90, font(400, 72), '#fff');
-      text(p.name, x + bw / 2, base - h + 170, font(800, 50), dark ? '#1b1430' : '#f5f1ff', 'center', bw - 30);
-      text(fmt(p.score) + ' pts', x + bw / 2, base - h + 230, font(700, 38), dark ? '#3a2a00' : '#b4a9d9', 'center', bw - 30);
+      text(p.name, x + bw / 2, base - h + 170, font(800, 46), '#1e1b16', 'center', bw - 30);
+      text(fmt(p.score) + ' pts', x + bw / 2, base - h + 230, font(700, 38), '#1e1b16', 'center', bw - 30);
     });
     let y = 990;
     (s.awards || []).slice(0, 4).forEach((a) => {
-      g.fillStyle = 'rgba(255,255,255,0.07)'; g.beginPath(); g.roundRect ? g.roundRect(80, y, W - 160, 130, 26) : g.rect(80, y, W - 160, 130); g.fill();
-      text(a.e, 150, y + 88, font(400, 60), '#fff');
-      text(a.n, 220, y + 58, font(800, 44), '#ffcf3f', 'left', W - 340);
-      text(a.t, 220, y + 105, font(600, 32), '#f5f1ff', 'left', W - 340);
+      g.fillStyle = '#fff5e3'; g.beginPath(); g.roundRect ? g.roundRect(80, y, W - 160, 130, 26) : g.rect(80, y, W - 160, 130); g.fill();
+      g.lineWidth = 5; g.strokeStyle = '#1e1b16'; g.stroke();
+      text(a.e, 150, y + 88, font(400, 60), '#1e1b16');
+      text(a.n, 220, y + 58, font(800, 40), '#1e1b16', 'left', W - 340);
+      text(a.t, 220, y + 105, font(600, 32), '#6a5f4d', 'left', W - 340);
       y += 150;
     });
-    text('Joue gratuitement, sans appli :', W / 2, 1790, font(600, 36), '#b4a9d9');
-    text(location.host + location.pathname.replace(/index\.html$/, ''), W / 2, 1845, font(800, 40), '#ffcf3f');
+    text('Joue gratuitement, sans appli :', W / 2, 1790, font(600, 36), '#a9cdbd');
+    text(location.host + location.pathname.replace(/index\.html$/, ''), W / 2, 1845, font(800, 36), '#ffc22e');
     return c;
   }
 
   async function shareCard() {
+    try { await document.fonts.load('40px "Bowlby One"'); } catch { /* */ }
     const c = drawCard();
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'tour-de-table-podium.png', { type: 'image/png' });
@@ -1026,7 +1034,8 @@
     if (lost) lost.innerHTML = view.lost ? '<div class="banner">Connexion perdue avec l’hôte, reconnexion… Si l’hôte ne revient pas, un autre joueur reprend la partie automatiquement.</div>' : '';
     if (!s || view.screen !== 'game') return;
     const pl = document.getElementById('players');
-    if (pl) pl.innerHTML = s.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}"><i class="dot ${p.net || ''}"></i>${p.id === s.hostId ? '👑 ' : ''}${esc(p.name)}${p.joker ? ' 🃏' : ''}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
+    const TOK = ['#ffc22e', '#47b8ff', '#ff5b3d', '#b79bff', '#63e0a5', '#ff8fc7', '#f2f2f2', '#ffa64d'];
+    if (pl) pl.innerHTML = s.players.map((p, i) => `<span class="chip ${p.connected ? '' : 'off'}" style="--c:${TOK[i % TOK.length]}"><span class="tok">${esc((p.name || '?').charAt(0).toUpperCase())}</span><i class="dot ${p.net || ''}"></i>${p.id === s.hostId ? '👑 ' : ''}${esc(p.name)}${p.joker ? ' 🃏' : ''}${p.id === view.myId ? ' (toi)' : ''}${p.photos ? `<span class="ph">📷${p.photos}</span>` : ''}</span>`).join('');
     const th = document.getElementById('thumbs');
     if (th) th.innerHTML = view.myPhotos.map((d) => `<img src="${d}" alt="">`).join('');
     const pb = document.getElementById('pickPhotos');
