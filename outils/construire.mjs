@@ -25,6 +25,7 @@ function prep(nom, ok, map = (r) => r) {
   const seen = new Map();
   for (const r of brut(nom)) {
     const v = +r.v;
+    if (r.cL && /empire|union des républiques|yougoslavie|tchécoslovaquie|prusse|royaume d|allemande|ottoman|dynastie|colonie/i.test(r.cL)) continue;
     if (!okLabel(r.iL) || r.iL === 'Jérusalem' || !Number.isFinite(v) || !ok(v, r) || seen.has(r.i)) continue;
     seen.set(r.i, map({ ...r, v, s: +r.s || 0 }));
   }
@@ -52,7 +53,7 @@ const PM = {
   montagnes_altitude: { q: 'Quel sommet est le plus haut ?', name: (r) => cap(r.iL), val: (r) => fmt(r.v) + ' m', big: true },
   batiments_hauteur: { q: 'Quel édifice est le plus haut ?', name: (r) => cap(r.iL), val: (r) => fmt(r.v) + ' m', big: true },
   fleuves_longueur: { q: 'Quel cours d’eau est le plus long ?', name: (r) => cap(r.iL), val: (r) => fmt(r.v) + ' km', big: true },
-  monuments_annee: { q: 'Lequel a été inauguré en premier ?', name: (r) => cap(r.iL), val: (r) => String(r.v), big: false, gap: 15 },
+  monuments_annee: { q: 'Lequel a été inauguré (ou ouvert au public) en premier ?', name: (r) => cap(r.iL), val: (r) => String(r.v), big: false, gap: 15 },
   personnes_naissance: { q: 'Qui est né(e) en premier ?', name: (r) => r.iL, val: (r) => 'né(e) en ' + r.v, big: false, gap: 4 },
   films_annee: { q: 'Quel film est sorti en premier ?', name: (r) => r.iL, val: (r) => String(r.v), big: false, gap: 3 }
 };
@@ -82,7 +83,7 @@ const JC = {
   montagnes_altitude: (r) => ({ q: `Quelle est l’altitude du sommet ${cap(r.iL)}${r.cL ? ' (' + pays(r.cL) + ')' : ''} ?`, v: Math.round(r.v), u: 'm' }),
   batiments_hauteur: (r) => ({ q: `Quelle est la hauteur de l’édifice ${cap(r.iL)}${r.cL ? ' (' + pays(r.cL) + ')' : ''} ?`, v: Math.round(r.v), u: 'm' }),
   fleuves_longueur: (r) => ({ q: `Quelle est la longueur du cours d’eau ${cap(r.iL)} ?`, v: Math.round(r.v), u: 'km' }),
-  monuments_annee: (r) => ({ q: `En quelle année a été inauguré(e) : ${cap(r.iL)}${r.cL ? ' (' + pays(r.cL) + ')' : ''} ?`, v: r.v, y: 1 }),
+  monuments_annee: (r) => ({ q: `En quelle année a été inauguré(e) ou ouvert(e) au public : ${cap(r.iL)}${r.cL ? ' (' + pays(r.cL) + ')' : ''} ?`, v: r.v, y: 1 }),
   personnes_naissance: (r) => ({ q: `En quelle année est né(e) ${r.iL}${r.dL ? ' (' + r.dL + ')' : ''} ?`, v: r.v, y: 1 }),
   films_annee: (r) => ({ q: `En quelle année est sorti le film « ${r.iL} » ?`, v: r.v, y: 1 })
 };
