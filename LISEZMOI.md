@@ -33,6 +33,13 @@ Chaque nouvelle manche a une banque de 500 questions (`questions.js`). « Plus s
 
 Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikidata (licence CC0). Pour les mettre à jour : modifier `outils/wikidata.mjs` (GitHub relance la récupération), puis lancer `node outils/construire.mjs`.
 
+## Ambiances et packs
+
+- **Ambiance de la soirée** (réglée par l'hôte) : 😎 Décontractée, 🕯️ Sérieuse, 🔥 Coquine (18+, pack à débloquer). Elle change les questions de « Plus susceptible », « Échelle 1 à 10 » et « Qui a écrit ça ? ». Les questions sont dans `packs.js`.
+- **Packs** : 🔥 Coquin et ✏️ Questions personnalisées. On les débloque à vie en payant, ou pour 24 h en regardant une pub.
+- **Mode démo** : tant que `config.js` ne contient pas de liens de paiement ni de régie publicitaire, le déblocage est gratuit (faux paiement, fausse pub de 15 s). Les packs débloqués sont mémorisés sur le téléphone de l'hôte.
+- **Avant de vendre pour de vrai** : il faut un compte chez un prestataire de paiement (Stripe, par exemple), une régie publicitaire, une petite fonction serveur qui vérifie les achats (sinon un joueur averti peut débloquer les packs sans payer), et les mentions légales, CGV et bandeau cookies exigés en France.
+
 ## Comment ça marche
 
 - **Connexion** : PeerJS (WebRTC), avec le serveur public gratuit de PeerJS pour la mise en relation. Ensuite, les données passent directement d'un téléphone à l'autre.

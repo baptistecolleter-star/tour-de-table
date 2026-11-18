@@ -25,6 +25,13 @@
     auteur: '✍️ Qui a écrit ça ?'
   };
   const fmt = (n) => Number(n).toLocaleString('fr-FR');
+  const PACKS = window.TDT_PACKS;
+  const CFG = window.TDT_CONFIG;
+  const AMB = {
+    decontracte: { nom: '😎 Décontractée', desc: 'Fun et léger, pour tout le monde' },
+    serieux: { nom: '🕯️ Sérieuse', desc: 'Des questions qui font parler de soi' },
+    coquin: { nom: '🔥 Coquine', desc: 'Osé et flirt, réservé aux adultes', pack: 'coquin' }
+  };
 
   // --- Petits outils ------------------------------------------------------------
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -35,6 +42,25 @@
   const store = {
     get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* navigation privée */ } }
+  };
+  // Packs débloqués sur ce téléphone : { coquin: { a_vie: true } | { jusqua: timestamp } }
+  const packs = {
+    all() { try { return JSON.parse(store.get('tdt-packs', '{}')) || {}; } catch { return {}; } },
+    has(id) { const p = packs.all()[id]; return !!p && (p.a_vie || (p.jusqua && p.jusqua > Date.now())); },
+    unlock(id, how) {
+      const all = packs.all();
+      all[id] = how === 'paiement' ? { a_vie: true } : { jusqua: Date.now() + CFG.dureePub * 3600e3 };
+      store.set('tdt-packs', JSON.stringify(all));
+    },
+    label(id) {
+      const p = packs.all()[id];
+      if (!packs.has(id)) return '';
+      return p.a_vie ? 'Débloqué' : 'Débloqué jusqu’à ' + new Date(p.jusqua).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+  const perso = {
+    get() { try { return Object.assign({ susceptible: [], echelle: [], auteur: [] }, JSON.parse(store.get('tdt-perso', '{}'))); } catch { return { susceptible: [], echelle: [], auteur: [] }; } },
+    set(v) { store.set('tdt-perso', JSON.stringify(v)); }
   };
   let toastTimer;
   function toast(msg) {
@@ -71,7 +97,7 @@
     H = {
       peer: null, pin: '', conns: new Map(), connObjs: new Map(),
       players: [{ id: 'p0', name: me.name, token: me.token, score: 0, connected: true, photos: [] }],
-      seq: 1, phase: 'lobby', settings: { count: 10, cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
+      seq: 1, phase: 'lobby', settings: { count: 10, ambiance: 'decontracte', cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
       plan: [], step: 0, qid: 0, q: null, answers: {}, endsAt: 0, timer: null, reveal: null,
       used: new Set(), auteur: null
     };
@@ -204,6 +230,7 @@
 
   function hostStart() {
     if (connectedPlayers().length < 2) return toast('Il faut au moins 2 joueurs');
+    if (H.settings.ambiance === 'coquin' && !packs.has('coquin')) return openUnlock('coquin');
     let cats = availableCats();
     if (!cats.length) cats = ['plusmoins'];
     const plan = [];
@@ -224,7 +251,7 @@
   function hostStep() {
     const type = H.plan[H.step];
     if (type === 'auteur') {
-      H.auteur = { prompt: pick(D.QUESTIONS_AUTEUR), texts: {}, queue: [] };
+      H.auteur = { prompt: poolFor('auteur'), texts: {}, queue: [] };
       H.q = null; H.reveal = null;
       H.phase = 'write'; H.qid++;
       hostTimer(DUR.write, hostEndWrite);
@@ -266,15 +293,27 @@
     return x;
   }
 
+  // Banque de questions selon l'ambiance, plus les questions personnalisées
+  function poolFor(type) {
+    const amb = H.settings.ambiance;
+    const base = amb === 'decontracte' ? (type === 'auteur' ? D.QUESTIONS_AUTEUR : Q[type]) : PACKS[amb][type];
+    const mine = packs.has('perso') ? perso.get()[type].filter(Boolean) : [];
+    const freeMine = mine.filter((x) => !H.used.has(type + '-' + x));
+    const fromMine = freeMine.length && Math.random() < 0.5;
+    const list = fromMine ? freeMine : base;
+    const it = takeUnused(list, (x) => type + '-' + x) || pick(list);
+    return it;
+  }
+
   function makeQuestion(type) {
     const names = (ids) => ids.map((id) => H.players.find((p) => p.id === id).name);
     if (type === 'susceptible') {
-      const it = takeUnused(Q.susceptible, (x) => 's-' + x) || pick(Q.susceptible);
+      const it = poolFor('susceptible').replace(/^(qui est le plus susceptible de\s*)/i, '').replace(/\s*\?$/, '');
       const choices = shuffle(connectedPlayers().map((p) => p.id));
-      return { type, prompt: 'Qui est le plus susceptible de ' + it + ' ?', choices, choiceNames: names(choices) };
+      return { type, prompt: 'Qui est le plus susceptible ' + (/^[aeéèêëiîïoôuûyh]/i.test(it) ? 'd’' : 'de ') + it + ' ?', choices, choiceNames: names(choices) };
     }
     if (type === 'echelle') {
-      const it = takeUnused(Q.echelle, (x) => 'e-' + x) || pick(Q.echelle);
+      const it = poolFor('echelle');
       const cp = connectedPlayers();
       const min = Math.min(...cp.map((p) => H.targets[p.id] || 0));
       const target = pick(cp.filter((p) => (H.targets[p.id] || 0) === min));
@@ -449,7 +488,7 @@
         eligible: H.phase === 'question' ? hostEligible(p.id) : H.phase === 'write' ? p.connected : false
       })),
       q: pq, reveal: H.reveal, write: H.phase === 'write' ? { prompt: H.auteur.prompt } : null,
-      you: forId
+      ambiance: H.settings.ambiance, you: forId
     };
   }
 
@@ -534,7 +573,7 @@
   function screenKey() {
     if (view.screen !== 'game') return view.screen + '|' + view.err;
     const s = view.s, p = myPlayer() || {};
-    return [s.phase, s.qid, p.answered, p.eligible, s.q && s.q.mediaKey && !!view.media[s.q.mediaKey]].join('|');
+    return [s.phase, s.qid, p.answered, p.eligible, s.q && s.q.mediaKey && !!view.media[s.q.mediaKey], s.ambiance, view.rev || 0].join('|');
   }
 
   function render() {
@@ -600,6 +639,19 @@
       </div>
       ${host ? `
       <div class="card">
+        <h3>Ambiance de la soirée</h3>
+        <div class="amb" id="amb">${Object.entries(AMB).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
+        <p class="mute small">L’ambiance change les questions de « Plus susceptible », « Échelle 1 à 10 » et « Qui a écrit ça ? ».</p>
+      </div>
+      <div class="card">
+        <h3>Packs</h3>
+        ${Object.entries(CFG.packs).map(([id, pk]) => `
+          <div class="pack">
+            <div><b>${pk.nom}</b><p class="mute small">${pk.desc}</p></div>
+            <div class="packact">${packs.has(id) ? `<span class="ok small">✓ ${packs.label(id)}</span>${id === 'perso' ? '<button class="small" id="editPerso">Mes questions</button>' : ''}` : `<button class="small primary" data-unlock="${id}">Débloquer</button>`}</div>
+          </div>`).join('')}
+      </div>
+      <div class="card">
         <h3>Réglages</h3>
         <label>Nombre de manches
           <select id="rounds">${[5, 10, 15, 20].map((n) => `<option ${n === H.settings.count ? 'selected' : ''}>${n}</option>`).join('')}</select>
@@ -607,7 +659,8 @@
         <div class="cats">${Object.entries(CATS).map(([k, v]) => `<label><input type="checkbox" data-cat="${k}" ${H.settings.cats[k] ? 'checked' : ''}>${v}</label>`).join('')}</div>
         <p class="mute small" id="catsNote"></p>
         <button id="start" class="primary">Lancer la partie</button>
-      </div>` : `<div class="wait">En attente du lancement par l'hôte…</div>`}
+      </div>` : `<div class="wait">Ambiance : <b>${esc(AMB[s.ambiance]?.nom || '')}</b><br>En attente du lancement par l'hôte…</div>`}
+      ${s.ambiance === 'coquin' ? '<div class="banner">🔞 Cette partie contient des questions coquines réservées aux adultes. Chacun peut passer une question qui le met mal à l’aise.</div>' : ''}
       <div id="lost"></div>`;
   }
 
@@ -762,6 +815,14 @@
     });
     on('rounds', 'change', (e) => { H.settings.count = +e.target.value; });
     document.querySelectorAll('[data-cat]').forEach((el) => el.addEventListener('change', () => { H.settings.cats[el.dataset.cat] = el.checked; updateDynamic(); }));
+    document.querySelectorAll('[data-amb]').forEach((b) => b.addEventListener('click', () => {
+      const k = b.dataset.amb, a = AMB[k];
+      if (a.pack && !packs.has(a.pack)) return openUnlock(a.pack);
+      if (k === 'coquin' && !confirmAdult()) return;
+      H.settings.ambiance = k; hostBroadcast(); view.key = ''; render();
+    }));
+    document.querySelectorAll('[data-unlock]').forEach((b) => b.addEventListener('click', () => openUnlock(b.dataset.unlock)));
+    on('editPerso', 'click', openPerso);
     on('start', 'click', () => send({ t: 'start' }));
     on('skip', 'click', () => send({ t: 'skip' }));
     on('again', 'click', () => send({ t: 'again' }));
@@ -784,6 +845,72 @@
       if (!t) return toast('Écris quelque chose !');
       send({ t: 'write', text: t });
     });
+  }
+
+  // --- Fenêtres : déblocage des packs et questions personnalisées -----------------
+  function modal(html) {
+    closeModal();
+    const m = document.createElement('div');
+    m.className = 'modal'; m.id = 'modal';
+    m.innerHTML = `<div class="sheet">${html}</div>`;
+    m.addEventListener('click', (e) => { if (e.target === m) closeModal(); });
+    document.body.appendChild(m);
+    return m;
+  }
+  function closeModal() { const m = document.getElementById('modal'); if (m) m.remove(); }
+  function refreshLobby() { view.rev = (view.rev || 0) + 1; view.key = ''; render(); }
+  let adult = false;
+  function confirmAdult() {
+    if (adult) return true;
+    const m = modal(`<h3>🔞 Réservé aux adultes</h3><p>L’ambiance Coquine propose des questions osées. Tous les joueurs doivent avoir 18 ans ou plus et être d’accord pour y jouer.</p>
+      <button class="primary" id="adultYes">Tous les joueurs ont 18 ans ou plus</button><button class="ghost" id="adultNo">Annuler</button>`);
+    m.querySelector('#adultYes').onclick = () => { adult = true; closeModal(); H.settings.ambiance = 'coquin'; hostBroadcast(); refreshLobby(); };
+    m.querySelector('#adultNo').onclick = closeModal;
+    return false;
+  }
+  function openUnlock(id) {
+    const pk = CFG.packs[id];
+    const link = CFG.paiement[id];
+    const m = modal(`<h3>${pk.nom}</h3><p>${pk.desc}</p>
+      <button class="primary" id="pay">Débloquer pour toujours · ${pk.prix}</button>
+      <button id="ad">📺 Regarder une pub (débloqué ${CFG.dureePub} h)</button>
+      ${link ? '' : '<p class="mute small">Mode démo : aucun paiement ni aucune vraie publicité. Le pack se débloque gratuitement pour tester.</p>'}
+      <button class="ghost" id="cancel">Plus tard</button>`);
+    m.querySelector('#cancel').onclick = closeModal;
+    m.querySelector('#pay').onclick = () => {
+      if (link) { window.open(link, '_blank', 'noopener'); return; }
+      packs.unlock(id, 'paiement'); closeModal(); toast(pk.nom + ' débloqué (démo)'); refreshLobby();
+    };
+    m.querySelector('#ad').onclick = () => playAd(id);
+  }
+  function playAd(id) {
+    let left = CFG.pubDemoSecondes;
+    const m = modal(`<h3>Publicité</h3><div class="adbox"><b>Espace publicitaire</b><span>(démonstration : une vraie régie afficherait une vidéo ici)</span></div>
+      <p class="center" id="adLeft"></p><button class="primary" id="adDone" disabled>Récupérer mon pack</button>`);
+    const tick = () => {
+      const el = m.querySelector('#adLeft'); if (!el) return clearInterval(t);
+      el.textContent = left > 0 ? `Encore ${left} s…` : 'Merci !';
+      m.querySelector('#adDone').disabled = left > 0;
+      left--;
+    };
+    const t = setInterval(tick, 1000); tick();
+    m.querySelector('#adDone').onclick = () => { clearInterval(t); packs.unlock(id, 'pub'); closeModal(); toast(CFG.packs[id].nom + ' débloqué pour ' + CFG.dureePub + ' h'); refreshLobby(); };
+  }
+  function openPerso() {
+    const v = perso.get();
+    const box = (k, label, ph) => `<label>${label}<textarea data-perso="${k}" rows="5" placeholder="${ph}">${esc(v[k].join('\n'))}</textarea></label>`;
+    const m = modal(`<h3>✏️ Mes questions</h3><p class="mute small">Une question par ligne. Elles se mélangent à celles du jeu, quelle que soit l’ambiance.</p>
+      ${box('susceptible', '👉 Qui est le plus susceptible de…', 'oublier ses clés\nchanter du ABBA en soirée')}
+      ${box('echelle', '🔟 Phrases à noter de 1 à 10', 'J’aime les karaokés.')}
+      ${box('auteur', '✍️ Questions « Qui a écrit ça ? »', 'Ton plus beau souvenir avec le groupe ?')}
+      <button class="primary" id="savePerso">Enregistrer</button><button class="ghost" id="cancel">Annuler</button>`);
+    m.querySelector('#cancel').onclick = closeModal;
+    m.querySelector('#savePerso').onclick = () => {
+      const out = {};
+      m.querySelectorAll('[data-perso]').forEach((t) => { out[t.dataset.perso] = t.value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 200).map((x) => x.slice(0, 140)); });
+      perso.set(out); closeModal();
+      toast((out.susceptible.length + out.echelle.length + out.auteur.length) + ' questions enregistrées');
+    };
   }
 
   // Réduit une photo (720 px max, JPEG) : la copie ne garde aucune métadonnée (GPS, appareil…)
