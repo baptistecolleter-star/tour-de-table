@@ -22,25 +22,26 @@ GitHub Pages ou Cloudflare Pages fonctionnent aussi : ce sont des fichiers stati
 
 | Manche | Principe | Points |
 | --- | --- | --- |
-| 📅 Photo → année | Un monument : en quelle année a-t-il été inauguré ? | 1 000 si l'année est exacte, 40 points de moins par année d'écart |
-| 🌍 Photo → pays | Un site du patrimoine mondial : dans quel pays ? (4 choix) | 500 à 1 000 selon la rapidité |
+| 👉 Qui est le plus susceptible de… | Tout le monde vote pour un joueur | 500 si tu votes comme la majorité |
+| 🔟 Sur une échelle de 1 à 10 | Un joueur se note en secret sur une affirmation, les autres devinent sa note | 1 000 si exact, 600 à 1 près, 300 à 2 près ; le joueur noté gagne 100 par bon pronostic |
+| ⚖️ Plus ou moins | Deux choix : lequel est le plus peuplé, le plus haut, le plus ancien… | 500 à 1 000 selon la rapidité |
+| 🔢 Le juste chiffre | Estimer un nombre (habitants, hauteur, année…) | Jusqu'à 1 000 selon la proximité, +200 pour le plus proche |
 | 🖼️ Galerie | Une photo d'un joueur : à qui est-elle ? | 500 à 1 000 selon la rapidité |
-| 🎬 Film en emojis | Retrouver le film (4 choix) | 500 à 1 000 selon la rapidité |
 | ✍️ Qui a écrit ça ? | Chacun répond en secret, puis on devine qui a écrit chaque réponse | 500 à 1 000 ; l'auteur gagne 150 par joueur piégé |
 
-Les manches Galerie et « Qui a écrit ça ? » demandent au moins 3 joueurs.
+Chaque nouvelle manche a une banque de 500 questions (`questions.js`). « Plus susceptible », Galerie et « Qui a écrit ça ? » demandent au moins 3 joueurs.
+
+Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikidata (licence CC0). Pour les mettre à jour : modifier `outils/wikidata.mjs` (GitHub relance la récupération), puis lancer `node outils/construire.mjs`.
 
 ## Comment ça marche
 
 - **Connexion** : PeerJS (WebRTC), avec le serveur public gratuit de PeerJS pour la mise en relation. Ensuite, les données passent directement d'un téléphone à l'autre.
-- **Photos année et pays** : tirées en direct de Wikidata et Wikimedia Commons (licences libres, sans clé) quand l'hôte crée la salle. Si Wikidata ne répond pas, une petite banque de secours de 21 photos prend le relais.
 - **Photos des joueurs** : réduites à 720 px sur le téléphone, ce qui supprime aussi la position GPS. Elles ne sont jamais stockées sur un serveur.
 
 ## Limites connues du prototype
 
 - Si le téléphone de l'hôte se met en veille ou recharge la page, la partie s'arrête. Le jeu demande à l'écran de rester allumé, mais certains téléphones l'ignorent.
 - Sur certains réseaux (4G d'opérateur, Wi-Fi d'entreprise), la connexion directe peut échouer pour un joueur. Le relais gratuit de PeerJS aide, sans garantie.
-- Les photos Wikimedia sont créditées par un lien vers leur page Commons, qui indique l'auteur et la licence. Avant une sortie publique, il faudra afficher directement l'auteur.
 - Le serveur public PeerJS est gratuit mais sans garantie de disponibilité.
 
 ## Tester en local

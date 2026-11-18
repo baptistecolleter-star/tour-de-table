@@ -102,3 +102,6 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--acc); color: var(--acc-txt); padding: 10px 16px; border-radius: 999px; font-weight: 800; z-index: 9; }
 .banner { background: #4a2030; border: 1px solid var(--ko); color: #ffd6d6; padding: 10px 12px; border-radius: 12px; font-weight: 700; font-size: 14px; }
+.choices.scale { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.choices.scale button { text-align: center; padding: 14px 0; font-size: 20px; }
+.choices.duo button { text-align: center; font-size: 19px; padding: 22px 14px; }

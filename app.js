@@ -14,14 +14,17 @@
     : { debug: 1 };
   const MAX_PLAYERS = 12;
   const MAX_PHOTOS = 10;
-  const DUR = { annee: 25, pays: 20, emojis: 20, galerie: 20, auteur: 20, write: 60, reveal: 9 };
+  const Q = window.TDT_Q;
+  const DUR = { susceptible: 20, plusmoins: 15, chiffre: 25, echelle: 25, galerie: 20, auteur: 20, write: 60, reveal: 9 };
   const CATS = {
-    annee: '📅 Photo → année',
-    pays: '🌍 Photo → pays',
+    susceptible: '👉 Qui est le plus susceptible de…',
+    echelle: '🔟 Sur une échelle de 1 à 10',
+    plusmoins: '⚖️ Plus ou moins',
+    chiffre: '🔢 Le juste chiffre',
     galerie: '🖼️ Galerie des joueurs',
-    emojis: '🎬 Film en emojis',
     auteur: '✍️ Qui a écrit ça ?'
   };
+  const fmt = (n) => Number(n).toLocaleString('fr-FR');
 
   // --- Petits outils ------------------------------------------------------------
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,8 +32,6 @@
   const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const pick = (a) => a[rnd(a.length)];
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-  const commonsImg = (f) => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=900';
-  const commonsPage = (f) => 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(f.replace(/ /g, '_'));
   const store = {
     get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* navigation privée */ } }
@@ -70,15 +71,14 @@
     H = {
       peer: null, pin: '', conns: new Map(), connObjs: new Map(),
       players: [{ id: 'p0', name: me.name, token: me.token, score: 0, connected: true, photos: [] }],
-      seq: 1, phase: 'lobby', settings: { count: 10, cats: { annee: true, pays: true, galerie: true, emojis: true, auteur: true } },
+      seq: 1, phase: 'lobby', settings: { count: 10, cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
       plan: [], step: 0, qid: 0, q: null, answers: {}, endsAt: 0, timer: null, reveal: null,
-      pools: { annee: [], pays: [], status: 'chargement' }, used: new Set(), auteur: null
+      used: new Set(), auteur: null
     };
     view.myId = 'p0';
     view.screen = 'connecting';
     render();
     openHostPeer(0);
-    loadPools();
     keepAwake();
     window.addEventListener('beforeunload', (e) => { if (H && H.players.length > 1) { e.preventDefault(); e.returnValue = ''; } });
   }
@@ -193,9 +193,10 @@
     const withPhotos = cp.filter((p) => p.photos.length).length;
     const a = [];
     const c = H.settings.cats;
-    if (c.annee) a.push('annee');
-    if (c.pays) a.push('pays');
-    if (c.emojis) a.push('emojis');
+    if (c.plusmoins) a.push('plusmoins');
+    if (c.chiffre) a.push('chiffre');
+    if (c.echelle && cp.length >= 2) a.push('echelle');
+    if (c.susceptible && cp.length >= 3) a.push('susceptible');
     if (c.galerie && cp.length >= 3 && withPhotos >= 1) a.push('galerie');
     if (c.auteur && cp.length >= 3) a.push('auteur');
     return a;
@@ -204,7 +205,7 @@
   function hostStart() {
     if (connectedPlayers().length < 2) return toast('Il faut au moins 2 joueurs');
     let cats = availableCats();
-    if (!cats.length) cats = ['emojis'];
+    if (!cats.length) cats = ['plusmoins'];
     const plan = [];
     let auteurLeft = H.settings.count >= 15 ? 2 : 1;
     while (plan.length < H.settings.count) {
@@ -266,25 +267,30 @@
   }
 
   function makeQuestion(type) {
-    if (type === 'annee') {
-      const pool = H.pools.annee.length ? H.pools.annee : D.FALLBACK_ANNEE;
-      const it = takeUnused(pool, (x) => 'a-' + x.f) || pick(pool);
-      return {
-        type, img: commonsImg(it.f), credit: commonsPage(it.f), answer: it.y, label: it.l,
-        prompt: it.photo === false ? 'En quelle année ce lieu a-t-il été inauguré ?' : 'En quelle année cette photo a-t-elle été prise ?'
-      };
+    const names = (ids) => ids.map((id) => H.players.find((p) => p.id === id).name);
+    if (type === 'susceptible') {
+      const it = takeUnused(Q.susceptible, (x) => 's-' + x) || pick(Q.susceptible);
+      const choices = shuffle(connectedPlayers().map((p) => p.id));
+      return { type, prompt: 'Qui est le plus susceptible de ' + it + ' ?', choices, choiceNames: names(choices) };
     }
-    if (type === 'pays') {
-      const pool = H.pools.pays.length ? H.pools.pays : D.FALLBACK_PAYS;
-      const it = takeUnused(pool, (x) => 'p-' + x.f) || pick(pool);
-      const others = shuffle([...new Set(pool.map((x) => x.c).concat(D.PAYS_LEURRES))].filter((c) => c !== it.c)).slice(0, 3);
-      const choices = shuffle([it.c, ...others]);
-      return { type, img: commonsImg(it.f), credit: commonsPage(it.f), choices, answer: choices.indexOf(it.c), label: it.l, prompt: 'Dans quel pays se trouve ce lieu ?' };
+    if (type === 'echelle') {
+      const it = takeUnused(Q.echelle, (x) => 'e-' + x) || pick(Q.echelle);
+      const cp = connectedPlayers();
+      const min = Math.min(...cp.map((p) => H.targets[p.id] || 0));
+      const target = pick(cp.filter((p) => (H.targets[p.id] || 0) === min));
+      H.targets[target.id] = (H.targets[target.id] || 0) + 1;
+      return { type, prompt: it, target: target.id, targetName: target.name, choices: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] };
     }
-    if (type === 'emojis') {
-      const it = takeUnused(D.FILMS, (x) => 'e-' + x[1]) || pick(D.FILMS);
-      const choices = shuffle([it[1], ...shuffle(D.FILMS.filter((x) => x[1] !== it[1])).slice(0, 3).map((x) => x[1])]);
-      return { type, emojis: it[0], choices, answer: choices.indexOf(it[1]), label: it[1], prompt: 'Quel film se cache derrière ces emojis ?' };
+    if (type === 'plusmoins') {
+      const it = takeUnused(Q.plusmoins, (x) => 'pm-' + x.q + x.a + x.b) || pick(Q.plusmoins);
+      const flip = Math.random() < 0.5;
+      const choices = flip ? [it.b, it.a] : [it.a, it.b];
+      const vals = flip ? [it.vb, it.va] : [it.va, it.vb];
+      return { type, prompt: it.q, choices, answer: flip ? 1 - it.r : it.r, label: choices[0] + ' : ' + vals[0] + ' · ' + choices[1] + ' : ' + vals[1] };
+    }
+    if (type === 'chiffre') {
+      const it = takeUnused(Q.chiffre, (x) => 'c-' + x.q) || pick(Q.chiffre);
+      return { type, prompt: it.q, answer: it.v, unit: it.u || '', annee: !!it.y, label: it.d || '' };
     }
     if (type === 'galerie') {
       const all = [];
@@ -339,9 +345,18 @@
       const a = H.answers[p.id];
       let pts = 0, shown = '—';
       if (a) {
-        if (q.type === 'annee') {
-          const v = parseInt(a.v, 10);
-          if (Number.isFinite(v)) { pts = Math.max(0, Math.round(1000 - 40 * Math.abs(v - q.answer))); shown = String(v); }
+        if (q.type === 'chiffre') {
+          const v = +a.v;
+          if (Number.isFinite(v)) {
+            shown = fmt(v) + (q.unit ? ' ' + q.unit : '');
+            pts = q.annee ? Math.max(0, Math.round(1000 - 40 * Math.abs(v - q.answer)))
+              : v > 0 ? Math.max(0, Math.round(1000 * (1 - Math.abs(Math.log2(v / q.answer)) / 2))) : 0;
+          }
+        } else if (q.type === 'susceptible') {
+          shown = '→ ' + (q.choiceNames[+a.v] ?? '—');
+        } else if (q.type === 'echelle') {
+          const v = +a.v + 1;
+          shown = p.id === q.target ? 'sa note : ' + v : String(v);
         } else {
           const v = +a.v;
           shown = q.choiceNames ? (q.choiceNames[v] ?? '—') : (q.choices[v] ?? '—');
@@ -351,14 +366,53 @@
       p.score += pts;
       results.push({ id: p.id, name: p.name, shown, pts });
     }
+    let answerText = null, extraLabel = null;
+    if (q.type === 'susceptible') {
+      const tally = {};
+      Object.values(H.answers).forEach((a) => { tally[+a.v] = (tally[+a.v] || 0) + 1; });
+      const max = Math.max(0, ...Object.values(tally));
+      const top = Object.keys(tally).filter((k) => tally[k] === max).map(Number);
+      for (const r of results) {
+        const a = H.answers[r.id];
+        if (a && top.includes(+a.v)) { r.pts = 500; H.players.find((p) => p.id === r.id).score += 500; }
+      }
+      answerText = max ? top.map((i) => q.choiceNames[i]).join(' et ') : 'Personne n’a voté';
+      extraLabel = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([i, n]) => q.choiceNames[i] + ' : ' + n + ' vote' + (n > 1 ? 's' : '')).join(' · ');
+    }
+    if (q.type === 'echelle') {
+      const ta = H.answers[q.target];
+      if (!ta) { answerText = '?'; extraLabel = q.targetName + ' n’a pas répondu à temps'; }
+      else {
+        const truth = +ta.v + 1;
+        let good = 0;
+        for (const r of results) {
+          if (r.id === q.target) continue;
+          const a = H.answers[r.id];
+          if (!a) continue;
+          const d = Math.abs(+a.v + 1 - truth);
+          const pts = d === 0 ? 1000 : d === 1 ? 600 : d === 2 ? 300 : 0;
+          if (d <= 1) good++;
+          r.pts = pts; H.players.find((p) => p.id === r.id).score += pts;
+        }
+        const me = results.find((r) => r.id === q.target);
+        if (me) { me.pts = 100 * good; H.players.find((p) => p.id === q.target).score += me.pts; }
+        answerText = truth + ' / 10';
+        extraLabel = q.targetName + ' : « ' + q.prompt + ' »';
+      }
+    }
+    if (q.type === 'chiffre') {
+      const best = results.filter((r) => H.answers[r.id]).sort((x, y) => Math.abs(H.answers[x.id].v - q.answer) - Math.abs(H.answers[y.id].v - q.answer))[0];
+      if (best) { best.pts += 200; best.shown += ' 🎯'; H.players.find((p) => p.id === best.id).score += 200; }
+    }
     if (q.type === 'auteur' && fooled) {
       const owner = H.players.find((p) => p.id === q.owner);
       if (owner) { owner.score += 150 * fooled; results.push({ id: owner.id, name: owner.name, shown: 'auteur·rice, ' + fooled + ' piégé' + (fooled > 1 ? 's' : ''), pts: 150 * fooled }); }
     }
     results.sort((a, b) => b.pts - a.pts);
     H.reveal = {
-      answer: q.type === 'annee' ? String(q.answer) : (q.choiceNames ? q.choiceNames[q.answer] : q.choices[q.answer]),
-      label: q.label, credit: q.credit || null, results
+      answer: answerText ?? (q.type === 'chiffre' ? fmt(q.answer) + (q.unit ? ' ' + q.unit : '') : (q.choiceNames ? q.choiceNames[q.answer] : q.choices[q.answer])),
+      title: q.type === 'susceptible' ? 'Élu(e) par le groupe' : q.type === 'echelle' ? 'La note de ' + q.targetName : 'La bonne réponse',
+      label: extraLabel ?? q.label, credit: q.type === 'chiffre' || q.type === 'plusmoins' ? 'wikidata' : null, results
     };
     H.phase = 'reveal';
     hostTimer(DUR.reveal, hostNext);
@@ -382,8 +436,8 @@
   function publicState(forId) {
     const q = H.q;
     const pq = q && {
-      type: q.type, prompt: q.prompt, img: q.img, mediaKey: q.mediaKey, emojis: q.emojis, text: q.text,
-      choices: q.choiceNames || q.choices, owner: q.owner
+      type: q.type, prompt: q.prompt, mediaKey: q.mediaKey, text: q.text, unit: q.unit, annee: q.annee,
+      choices: q.choiceNames || q.choices, owner: q.owner, target: q.target, targetName: q.targetName
     };
     return {
       phase: H.phase, pin: H.pin, qid: H.qid, step: H.step, total: H.plan.length,
@@ -395,7 +449,7 @@
         eligible: H.phase === 'question' ? hostEligible(p.id) : H.phase === 'write' ? p.connected : false
       })),
       q: pq, reveal: H.reveal, write: H.phase === 'write' ? { prompt: H.auteur.prompt } : null,
-      pools: H.pools.status, you: forId
+      you: forId
     };
   }
 
@@ -403,46 +457,6 @@
     if (!H) return;
     hostEachConn((conn, pid) => conn.send({ t: 'state', s: publicState(pid) }));
     onState(publicState('p0'));
-  }
-
-  async function loadPools() {
-    const q = (sparql) => {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 25000);
-      return fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql), { signal: ctl.signal })
-        .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-        .then((j) => j.results.bindings)
-        .finally(() => clearTimeout(t));
-    };
-    const okFile = (f) => /\.(jpe?g)$/i.test(f) && !/map|carte|montage|logo|plan/i.test(f);
-    const dedupe = (rows, mk) => {
-      const seen = new Map();
-      for (const r of rows) {
-        const i = r.i.value;
-        let f; try { f = decodeURIComponent(r.f.value); } catch { continue; }
-        if (!okFile(f) || seen.has(i)) continue;
-        const it = mk(r, f);
-        if (it) seen.set(i, it);
-      }
-      return [...seen.values()];
-    };
-    const [pays, annee] = await Promise.allSettled([q(D.SPARQL_PAYS), q(D.SPARQL_ANNEE)]);
-    if (!H) return;
-    if (pays.status === 'fulfilled') {
-      H.pools.pays = dedupe(pays.value, (r, f) => ({ f, l: r.l.value, c: D.RENOMMER_PAYS[r.c.value] || r.c.value }));
-    }
-    if (annee.status === 'fulfilled') {
-      H.pools.annee = dedupe(annee.value, (r, f) => {
-        const y = +r.y.value;
-        if (r.l.value.includes(String(y))) return null; // l'année est dans le nom : trop facile
-        return { f, l: r.l.value, y, photo: false };
-      });
-    }
-    if (H.pools.pays.length < 10) H.pools.pays = [];
-    if (H.pools.annee.length < 10) H.pools.annee = [];
-    const n = H.pools.pays.length + H.pools.annee.length;
-    H.pools.status = n ? n + ' photos prêtes' : 'mode secours (' + (D.FALLBACK_PAYS.length + D.FALLBACK_ANNEE.length) + ' photos)';
-    hostBroadcast();
   }
 
   async function keepAwake() {
@@ -592,7 +606,6 @@
         </label>
         <div class="cats">${Object.entries(CATS).map(([k, v]) => `<label><input type="checkbox" data-cat="${k}" ${H.settings.cats[k] ? 'checked' : ''}>${v}</label>`).join('')}</div>
         <p class="mute small" id="catsNote"></p>
-        <p class="mute small">Banque d'images : <span id="pools"></span></p>
         <button id="start" class="primary">Lancer la partie</button>
       </div>` : `<div class="wait">En attente du lancement par l'hôte…</div>`}
       <div id="lost"></div>`;
@@ -618,32 +631,37 @@
   function questionHTML() {
     const s = view.s, q = s.q, p = myPlayer() || {};
     let media = '';
-    if (q.img) media = `<img class="photo" src="${esc(q.img)}" alt="Photo mystère" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=wait>Image indisponible 😕</div>'">`;
+    let prompt = esc(q.prompt);
     if (q.mediaKey) media = view.media[q.mediaKey] ? `<img class="photo" src="${view.media[q.mediaKey]}" alt="Photo mystère">` : '<div class="wait">Chargement de la photo…</div>';
-    if (q.emojis) media = `<div class="emojis">${esc(q.emojis)}</div>`;
-    if (q.text) media = `<div class="quote">« ${esc(q.text)} »</div><p class="mute small">${esc(q.prompt)}</p>`;
+    if (q.text) { media = `<div class="quote">« ${esc(q.text)} »</div><p class="mute small">${esc(q.prompt)}</p>`; prompt = 'Qui a écrit ça ?'; }
+    if (q.type === 'echelle') {
+      const mine = q.target === view.myId;
+      prompt = mine ? 'Note-toi de 1 à 10 (en secret)' : `Quelle note va se donner ${esc(q.targetName)} ?`;
+      media = `<div class="quote">${esc(q.prompt)}</div><p class="mute small">1 = pas du tout d'accord · 10 = complètement</p>`;
+    }
     let input = '';
     if (!p.eligible && !p.answered) {
       input = `<div class="wait">${q.owner === view.myId ? (q.type === 'auteur' ? "C'est ta réponse ! Croise les doigts 😏" : "C'est ta photo ! Regarde-les chercher 😏") : 'Tu regardes cette manche.'}<br><span class="mute small" id="count"></span></div>`;
     } else if (p.answered) {
       input = `<div class="wait">Réponse envoyée ✅<br><span class="mute small" id="count"></span></div>`;
-    } else if (q.type === 'annee') {
-      input = `<div class="row"><input id="year" type="number" inputmode="numeric" min="1800" max="2026" placeholder="Ex. 1975"><button id="sendYear" class="primary" style="flex:0 0 auto;width:auto">Valider</button></div>`;
+    } else if (q.type === 'chiffre') {
+      input = `<div class="row"><input id="num" type="text" inputmode="decimal" autocomplete="off" placeholder="${q.annee ? 'Ex. 1975' : 'Ton estimation'}"><button id="sendNum" class="primary" style="flex:0 0 auto;width:auto">Valider</button></div>${q.unit ? `<p class="mute small center">En ${esc(q.unit)}</p>` : ''}`;
     } else {
-      input = `<div class="choices">${q.choices.map((c, i) => `<button data-choice="${i}">${esc(c)}</button>`).join('')}</div>`;
+      const cls = q.type === 'echelle' ? 'choices scale' : q.type === 'plusmoins' ? 'choices duo' : 'choices';
+      input = `<div class="${cls}">${q.choices.map((c, i) => `<button data-choice="${i}">${esc(c)}</button>`).join('')}</div>`;
     }
     return `${header()}
-      <p class="prompt">${q.type === 'auteur' ? 'Qui a écrit ça ?' : esc(q.prompt)}</p>
+      <p class="prompt">${prompt}</p>
       ${media}${input}${hostSkipBtn('Fin du chrono')}`;
   }
 
   function revealHTML() {
     const s = view.s, r = s.reveal;
     return `${header()}
-      <p class="mute center">La bonne réponse</p>
+      <p class="mute center">${esc(r.title || 'La bonne réponse')}</p>
       <div class="answer">${esc(r.answer)}</div>
       <p class="center">${esc(r.label || '')}</p>
-      ${r.credit ? `<p class="credit">Photo : <a href="${esc(r.credit)}" target="_blank" rel="noopener">Wikimedia Commons (auteur et licence)</a></p>` : ''}
+      ${r.credit ? '<p class="credit">Source des chiffres : <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a></p>' : ''}
       <div class="results">${r.results.map((x) => `<div class="res"><span><b>${esc(x.name)}</b> · <span class="mute">${esc(x.shown)}</span></span><span class="pts ${x.pts ? '' : 'zero'}">+${x.pts}</span></div>`).join('')}</div>
       <div class="card"><h3>Classement</h3><div class="scores" id="scores"></div></div>
       ${isHost() ? '<button id="skip" class="primary">Suivant ▶</button>' : '<p class="mute center small">La suite arrive…</p>'}`;
@@ -673,8 +691,6 @@
     if (th) th.innerHTML = view.myPhotos.map((d) => `<img src="${d}" alt="">`).join('');
     const pb = document.getElementById('pickPhotos');
     if (pb) pb.textContent = view.myPhotos.length ? `Changer mes photos (${view.myPhotos.length})` : 'Choisir mes photos';
-    const pools = document.getElementById('pools');
-    if (pools) pools.textContent = s.pools;
     const st = document.getElementById('start');
     if (st) {
       const n = s.players.filter((p) => p.connected).length;
@@ -687,6 +703,7 @@
       const n = connectedPlayers().length;
       if (H.settings.cats.galerie && (n < 3 || !connectedPlayers().some((p) => p.photos.length))) missing.push('Galerie : 3 joueurs et au moins une photo');
       if (H.settings.cats.auteur && n < 3) missing.push('Qui a écrit ça : 3 joueurs');
+      if (H.settings.cats.susceptible && n < 3) missing.push('Plus susceptible : 3 joueurs');
       cn.textContent = missing.length ? 'Pas encore disponible → ' + missing.join(' · ') : '';
     }
     const cnt = document.getElementById('count');
@@ -754,13 +771,14 @@
       document.querySelectorAll('[data-choice]').forEach((x) => { x.disabled = true; });
       send({ t: 'answer', v: +b.dataset.choice });
     }));
-    const sendYear = () => {
-      const v = parseInt(document.getElementById('year').value, 10);
-      if (!Number.isFinite(v) || v < 1000 || v > 2100) return toast('Entre une année, ex. 1975');
+    const sendNum = () => {
+      const raw = (document.getElementById('num').value || '').replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+      const v = parseFloat(raw);
+      if (!Number.isFinite(v) || v < 0) return toast('Entre un nombre');
       send({ t: 'answer', v });
     };
-    on('sendYear', 'click', sendYear);
-    on('year', 'keydown', (e) => { if (e.key === 'Enter') sendYear(); });
+    on('sendNum', 'click', sendNum);
+    on('num', 'keydown', (e) => { if (e.key === 'Enter') sendNum(); });
     on('sendWrite', 'click', () => {
       const t = document.getElementById('writeText').value.trim();
       if (!t) return toast('Écris quelque chose !');

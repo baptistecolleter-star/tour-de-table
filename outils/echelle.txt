@@ -1,0 +1,563 @@
+J'adore les huîtres.
+Je pourrais vivre une semaine sans téléphone.
+J'aime me lever tôt.
+Je suis quelqu'un de très organisé.
+J'adore danser en soirée.
+J'ai peur des araignées.
+J'aime le camping.
+Je supporte bien le froid.
+J'adore la chaleur de l'été.
+Je suis rancunier.
+Je suis quelqu'un de patient.
+J'aime cuisiner.
+J'adore les films d'horreur.
+Je pleure facilement devant un film.
+Je suis très gourmand.
+J'aime faire du sport.
+J'adore la plage.
+Je préfère la montagne à la mer.
+J'aime les chats.
+J'aime les chiens.
+Je suis accro au café.
+J'aime le fromage qui pue.
+Je suis fan de karaoké.
+Je chante bien.
+J'aime parler en public.
+Je suis timide.
+Je suis bavard.
+J'adore les surprises.
+Je déteste être en retard.
+Je suis souvent en retard.
+J'aime les jeux de société.
+Je suis mauvais perdant.
+Je suis compétitif.
+J'aime lire.
+J'aime les séries.
+Je pourrais regarder une série entière en une nuit.
+J'aime les voyages.
+J'ai peur en avion.
+J'aime conduire.
+Je suis maniaque du rangement.
+J'aime faire le ménage.
+Je suis dépensier.
+Je fais attention à mes dépenses.
+J'adore faire du shopping.
+J'aime les fêtes de Noël.
+J'aime décorer la maison.
+Je suis romantique.
+Je crois au coup de foudre.
+Je crois aux fantômes.
+Je lis mon horoscope.
+Je suis superstitieux.
+J'aime la nourriture épicée.
+J'aime les sushis.
+J'aime la pizza à l'ananas.
+Je mange des légumes tous les jours.
+Je pourrais devenir végétarien.
+J'aime le chocolat noir.
+J'adore les bonbons.
+Je suis un grand dormeur.
+J'aime faire la sieste.
+Je suis du matin.
+Je suis du soir.
+J'aime les fêtes qui finissent à l'aube.
+Je préfère une soirée tranquille à la maison.
+J'aime la musique classique.
+J'aime le rap.
+J'aime le rock.
+J'écoute de la musique toute la journée.
+J'aime les comédies musicales.
+J'aime les musées.
+J'aime l'art moderne.
+J'aime la randonnée.
+J'aime courir.
+J'aime nager.
+Je suis à l'aise dans l'eau.
+J'aime le vélo.
+J'aime les sports extrêmes.
+Je ferais du saut en parachute.
+J'ai le vertige.
+Je suis claustrophobe.
+J'aime les montagnes russes.
+J'aime les jeux vidéo.
+Je suis doué en bricolage.
+Je suis doué en cuisine.
+Je suis doué en dessin.
+Je suis doué en maths.
+J'aime l'histoire.
+J'aime les sciences.
+J'aime apprendre des langues.
+Je parle bien anglais.
+J'aime les animaux sauvages.
+J'aime le jardinage.
+J'ai la main verte.
+J'aime les plantes d'intérieur.
+J'aime les réseaux sociaux.
+Je publie souvent sur les réseaux.
+Je réponds vite aux messages.
+J'aime les appels téléphoniques.
+J'envoie beaucoup de messages vocaux.
+J'utilise beaucoup d'emojis.
+J'aime les mèmes.
+J'aime les blagues nulles.
+Je ris facilement.
+J'ai de l'humour.
+Je suis susceptible.
+Je suis jaloux.
+Je suis têtu.
+Je suis généreux.
+Je suis curieux.
+Je suis aventurier.
+Je suis casanier.
+Je suis spontané.
+Je planifie tout à l'avance.
+Je fais des listes pour tout.
+J'oublie souvent des choses.
+Je perds souvent mes clés.
+Je suis tête en l'air.
+Je suis ponctuel.
+Je suis perfectionniste.
+Je suis stressé.
+Je reste calme sous pression.
+Je m'énerve facilement.
+Je suis optimiste.
+Je suis nostalgique.
+J'aime les vieilles photos.
+J'aime les années 80.
+J'aime les années 90.
+J'aime les dessins animés.
+J'aime les mangas.
+J'aime la science-fiction.
+J'aime les romans policiers.
+J'aime les documentaires.
+J'aime les émissions de télé-réalité.
+J'aime les jeux télévisés.
+J'aime le cinéma d'auteur.
+Je vais souvent au cinéma.
+J'aime le théâtre.
+J'aime les concerts.
+J'aime les festivals.
+J'aime la foule.
+J'aime le calme.
+J'aime la campagne.
+J'aime la grande ville.
+Je pourrais vivre à l'étranger.
+Je pourrais vivre sur une île déserte.
+Je pourrais vivre sans internet.
+Je pourrais vivre sans voiture.
+Je pourrais vivre sans sucre.
+Je pourrais vivre sans fromage.
+Je pourrais vivre sans café.
+Je pourrais vivre sans musique.
+Je pourrais vivre dans une tiny house.
+Je pourrais vivre dans une cabane dans les bois.
+Je pourrais vivre en colocation.
+J'aime les grandes familles.
+J'aime les enfants.
+J'aime garder des enfants.
+J'aime les repas de famille.
+J'aime les longs repas.
+J'aime cuisiner pour beaucoup de monde.
+J'aime recevoir chez moi.
+J'aime être invité.
+J'aime les apéros improvisés.
+J'aime les barbecues.
+J'aime la raclette.
+J'aime la fondue.
+J'aime les crêpes.
+J'aime les escargots.
+J'aime les cuisses de grenouille.
+J'aime le poisson.
+J'aime les fruits de mer.
+J'aime les desserts.
+J'aime la pâtisserie.
+Je sais faire un gâteau sans recette.
+J'aime le thé.
+J'aime les boissons gazeuses.
+J'aime le vin.
+J'aime la bière.
+J'aime les cocktails.
+Je bois beaucoup d'eau.
+Je mange équilibré.
+Je grignote entre les repas.
+Je mange vite.
+Je mange lentement.
+Je finis toujours mon assiette.
+Je partage facilement ma nourriture.
+Je déteste qu'on pique dans mon assiette.
+J'aime essayer de nouveaux restaurants.
+Je commande toujours la même chose.
+J'aime le fast-food.
+J'aime la cuisine de grand-mère.
+J'aime la cuisine asiatique.
+J'aime la cuisine italienne.
+J'aime la cuisine mexicaine.
+J'aime la cuisine indienne.
+J'aime la cuisine libanaise.
+J'aime les marchés.
+J'aime faire les courses.
+J'aime faire les soldes.
+J'aime les brocantes.
+J'aime acheter en ligne.
+J'aime les objets anciens.
+J'aime la technologie.
+J'aime les gadgets.
+J'ai toujours le dernier téléphone.
+J'aime la mode.
+Je fais attention à mon look.
+J'aime les tatouages.
+J'aime les piercings.
+J'aime changer de coiffure.
+J'aime me déguiser.
+J'aime Halloween.
+J'aime les anniversaires.
+J'aime qu'on fête mon anniversaire.
+J'aime faire des cadeaux.
+J'aime recevoir des cadeaux.
+J'aime les cadeaux faits main.
+J'aime écrire.
+J'aime écrire des cartes postales.
+J'aime tenir un journal.
+J'aime la poésie.
+J'aime la philosophie.
+J'aime débattre.
+J'aime avoir raison.
+J'admets facilement mes erreurs.
+J'aime les conseils.
+Je donne beaucoup de conseils.
+J'aime aider les autres.
+Je sais garder un secret.
+J'aime les ragots.
+Je suis bon menteur.
+Je rougis facilement.
+Je suis fier.
+Je suis modeste.
+J'aime être le centre de l'attention.
+Je préfère rester dans l'ombre.
+J'aime prendre des photos.
+J'aime être pris en photo.
+J'aime les selfies.
+J'aime filmer mes vacances.
+J'aime les voyages en train.
+J'aime les road trips.
+J'aime les voyages organisés.
+J'aime voyager seul.
+J'aime voyager en groupe.
+J'aime les hôtels de luxe.
+J'aime les auberges de jeunesse.
+J'aime dormir à la belle étoile.
+J'aime le ski.
+J'aime la neige.
+J'aime la pluie.
+J'aime les orages.
+J'aime l'automne.
+J'aime le printemps.
+J'aime l'hiver.
+J'aime le soleil.
+J'aime la mer froide.
+Je me baigne même quand l'eau est froide.
+J'aime le bateau.
+J'ai le mal de mer.
+J'aime la pêche.
+J'aime la chasse aux champignons.
+J'aime les balades en forêt.
+J'aime les animaux de la ferme.
+J'aimerais vivre dans une ferme.
+J'aimerais avoir des poules.
+J'aimerais avoir un cheval.
+J'aimerais avoir un serpent.
+J'aimerais avoir un perroquet.
+J'aime les insectes.
+J'aime les zoos.
+J'aime les aquariums.
+J'aime l'espace.
+J'aimerais aller dans l'espace.
+J'aimerais voyager dans le temps.
+J'aimerais être célèbre.
+J'aimerais être riche.
+J'aimerais avoir un château.
+J'aimerais vivre au bord de la mer.
+J'aimerais vivre à la montagne.
+J'aimerais vivre à Paris.
+J'aimerais vivre à New York.
+J'aimerais vivre au Japon.
+J'aimerais changer de métier.
+J'aime mon travail.
+J'aime travailler en équipe.
+J'aime travailler seul.
+J'aime le télétravail.
+J'aime les réunions.
+Je suis bon en organisation d'événements.
+J'aime les défis.
+J'aime prendre des risques.
+J'aime la routine.
+J'aime le changement.
+J'aime déménager.
+J'aime décorer mon intérieur.
+J'aime le minimalisme.
+Je garde tout.
+Je jette facilement.
+J'aime faire du tri.
+J'aime le recyclage.
+Je fais attention à l'écologie.
+J'aime les produits locaux.
+J'aime le bio.
+J'aime faire mon pain.
+J'aime faire mes confitures.
+J'aime les pique-niques.
+J'aime les fêtes foraines.
+J'aime les parcs d'attractions.
+J'aime le cirque.
+J'aime la magie.
+J'aime les énigmes.
+J'aime les escape games.
+J'aime les quiz.
+J'aime les mots croisés.
+J'aime le sudoku.
+J'aime les puzzles.
+J'aime les échecs.
+J'aime les jeux de cartes.
+J'aime le poker.
+J'aime les jeux de hasard.
+J'aime gagner.
+J'accepte bien de perdre.
+J'aime tricher un peu aux jeux.
+J'aime les blind tests.
+Je reconnais vite une chanson.
+J'aime chanter en voiture.
+J'aime danser seul chez moi.
+J'aime les slows.
+J'aime la salsa.
+J'aime le rock'n'roll.
+J'aime le reggae.
+J'aime l'électro.
+J'aime la variété française.
+J'aime les chansons tristes.
+J'aime le silence.
+J'aime le bruit de la ville.
+J'aime la nuit.
+J'aime les levers de soleil.
+J'aime les couchers de soleil.
+J'aime les étoiles.
+J'aime l'astrologie.
+J'aime la méditation.
+J'aime le yoga.
+J'aime les massages.
+J'aime les spas.
+J'aime les bains chauds.
+Je prends des douches très longues.
+J'aime prendre soin de moi.
+Je passe beaucoup de temps dans la salle de bain.
+J'aime les parfums.
+J'aime les bougies parfumées.
+J'aime les plaids et le canapé.
+J'aime rester en pyjama le dimanche.
+J'aime les dimanches.
+J'aime les lundis.
+J'aime les vendredis soir.
+J'aime les vacances à la maison.
+J'aime les week-ends chargés.
+J'aime ne rien faire.
+J'aime m'ennuyer.
+Je m'ennuie vite.
+J'ai beaucoup d'énergie.
+Je suis souvent fatigué.
+Je suis frileux.
+J'ai toujours chaud.
+J'aime les pulls moches.
+J'aime les chaussettes rigolotes.
+J'aime les chapeaux.
+J'aime les lunettes de soleil.
+J'aime les montres.
+J'aime les bijoux.
+J'aime les sacs à main.
+J'aime les baskets.
+J'aime les talons.
+J'aime le confort avant tout.
+J'aime les couleurs vives.
+J'aime le noir.
+J'aime le rose.
+J'aime les motifs léopard.
+J'aime les rayures.
+J'aime les voitures.
+J'aime les motos.
+J'aime les vieilles voitures.
+J'aime les trains.
+J'aime les avions.
+J'aime les aéroports.
+J'aime les gares.
+J'aime les transports en commun.
+J'aime marcher en ville.
+J'aime la trottinette.
+J'aime me perdre dans une ville inconnue.
+J'ai le sens de l'orientation.
+Je me perds facilement.
+J'aime les cartes routières.
+J'aime la géographie.
+Je connais beaucoup de capitales.
+J'aime les drapeaux.
+J'aime l'actualité.
+J'aime la politique.
+J'aime l'économie.
+J'aime la bourse.
+J'aime les chiffres.
+J'aime l'astronomie.
+J'aime la biologie.
+J'aime la chimie.
+J'aime la physique.
+J'aime l'informatique.
+J'aime coder.
+J'aime l'intelligence artificielle.
+J'aime les robots.
+J'aime les livres de cuisine.
+J'aime les émissions de cuisine.
+J'aime les vidéos de chats.
+J'aime les podcasts.
+J'aime la radio.
+J'aime les livres audio.
+J'aime les bandes dessinées.
+J'aime les romans d'amour.
+J'aime les romans fantastiques.
+J'aime les biographies.
+J'aime les livres de développement personnel.
+J'aime relire mes livres préférés.
+J'aime revoir mes films préférés.
+J'aime les films de Noël.
+J'aime les films d'action.
+J'aime les comédies romantiques.
+J'aime les westerns.
+J'aime les films en noir et blanc.
+J'aime les films de super-héros.
+J'aime les films d'animation.
+J'aime les films français.
+J'aime les films en VO.
+J'aime les sous-titres.
+J'aime les longs films.
+J'aime les courts-métrages.
+J'aime les séries policières.
+J'aime les séries médicales.
+J'aime les séries historiques.
+J'aime les séries coréennes.
+J'aime les jeux de rôle.
+J'aime les déguisements de groupe.
+J'aime les soirées à thème.
+J'aime organiser des soirées.
+J'aime les grandes tablées.
+J'aime les dîners en tête-à-tête.
+J'aime les rendez-vous galants.
+J'aime les déclarations d'amour.
+J'aime les mariages.
+J'aime les enterrements de vie de jeune fille ou de garçon.
+J'aime les baptêmes.
+J'aime les réunions de famille.
+J'aime mes cousins.
+J'aime les longues conversations au téléphone.
+J'aime les conversations profondes à 2 h du matin.
+J'aime les débats en soirée.
+J'aime parler de politique à table.
+J'aime parler de mes problèmes.
+J'aime écouter les autres.
+J'aime rencontrer de nouvelles personnes.
+Je me fais facilement des amis.
+J'aime les petits groupes.
+J'aime les grandes fêtes.
+J'aime les fêtes de village.
+J'aime les feux d'artifice.
+J'aime le 14 Juillet.
+J'aime le jour de l'An.
+J'aime les résolutions du Nouvel An.
+Je tiens mes résolutions.
+J'aime me fixer des objectifs.
+J'aime réussir ce que j'entreprends.
+J'abandonne facilement.
+Je suis persévérant.
+Je suis courageux.
+Je suis peureux.
+J'aime les sensations fortes.
+J'aime les films qui font peur.
+J'aime les maisons hantées.
+J'aime les histoires de fantômes.
+J'aime les légendes.
+J'aime la mythologie.
+J'aime les châteaux.
+J'aime les cathédrales.
+J'aime les ruines.
+J'aime l'archéologie.
+J'aime les dinosaures.
+J'aime les volcans.
+J'aime les tremblements de terre au cinéma.
+J'aime les catastrophes naturelles en documentaire.
+J'aime la météo.
+J'aime regarder la mer.
+J'aime regarder le feu.
+J'aime regarder les gens passer.
+J'aime les terrasses de café.
+J'aime les brunchs.
+J'aime le petit-déjeuner.
+Je saute souvent le petit-déjeuner.
+J'aime les tartines.
+J'aime les croissants.
+J'aime le pain au chocolat.
+J'aime la chocolatine.
+J'aime les céréales.
+J'aime les œufs.
+J'aime le bacon.
+J'aime les pancakes.
+J'aime les fruits.
+J'aime les smoothies.
+J'aime le jus d'orange.
+J'aime la soupe.
+J'aime les salades.
+J'aime les frites.
+J'aime la mayonnaise.
+J'aime le ketchup.
+J'aime la moutarde forte.
+J'aime l'ail.
+J'aime les oignons.
+J'aime la coriandre.
+J'aime les olives.
+J'aime les champignons.
+J'aime les épinards.
+J'aime les choux de Bruxelles.
+J'aime les betteraves.
+J'aime les endives.
+J'aime le foie gras.
+J'aime les abats.
+J'aime le boudin.
+J'aime les tripes.
+J'aime le steak tartare.
+J'aime la viande saignante.
+J'aime le poisson cru.
+J'aime les plats en sauce.
+J'aime les gratins.
+J'aime les pâtes.
+J'aime le riz.
+J'aime les lentilles.
+J'aime le couscous.
+J'aime la paella.
+J'aime le kebab.
+J'aime les burgers.
+J'aime les hot-dogs.
+J'aime les tacos.
+J'aime les ramens.
+J'aime la glace.
+J'aime le gâteau au chocolat.
+J'aime la tarte aux pommes.
+J'aime les macarons.
+J'aime les fraises.
+J'aime la chantilly.
+J'aime la crème brûlée.
+J'aime le tiramisu.
+J'aime les desserts aux fruits.
+J'aime les bonbons qui piquent.
+J'aime la réglisse.
+J'aime le caramel.
+J'aime la pâte à tartiner.
+J'aime manger au lit.
+J'aime manger devant la télé.
+J'aime manger dehors.
+J'aime les cantines.
+J'aime les restaurants étoilés.
+J'aime les petits bouis-bouis.
+J'aime goûter des plats bizarres.
+Je mangerais des insectes.
