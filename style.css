@@ -125,3 +125,14 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .dot.faible { background: #ffad3f; }
 .dot.hote { background: var(--acc); }
 .dot.perdu { background: #6b6290; }
+button.big { font-size: 21px; padding: 18px; }
+.rule { font-size: 13px; color: var(--mute); margin-top: -4px; }
+details.fold { padding: 0; gap: 0; }
+details.fold > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: '▾'; color: var(--mute); font-size: 18px; transition: transform .2s; }
+details.fold[open] > summary::after { transform: rotate(180deg); }
+details.fold[open] { padding-bottom: 16px; }
+details.fold > :not(summary) { margin: 0 16px 10px; }
+.award { display: flex; gap: 12px; align-items: center; padding: 6px 0; }
+.award > span { font-size: 30px; }

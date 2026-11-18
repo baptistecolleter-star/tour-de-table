@@ -28,6 +28,14 @@
     auteur: '✍️ Qui a écrit ça ?'
   };
   const fmt = (n) => Number(n).toLocaleString('fr-FR');
+  const RULES = {
+    susceptible: 'Vote pour la personne qui colle le mieux. Tu gagnes si tu votes comme la majorité.',
+    echelle: 'Un joueur se note en secret, les autres devinent sa note. Plus tu es proche, plus tu marques.',
+    plusmoins: 'Deux choix, une seule bonne réponse. Plus tu es rapide, plus tu marques.',
+    chiffre: 'Donne ton estimation. Le plus proche gagne un bonus.',
+    galerie: 'Une photo d’un joueur : devine à qui elle appartient.',
+    auteur: 'Réponds en secret, puis devine qui a écrit chaque réponse. Piège les autres !'
+  };
   const PACKS = window.TDT_PACKS;
   const CFG = window.TDT_CONFIG;
   const AMB = {
@@ -100,7 +108,7 @@
     H = {
       peer: null, pin: '', gen: 1, hostId: 'p0', conns: new Map(), connObjs: new Map(), lastSnap: 0, aloneSince: 0,
       players: [{ id: 'p0', name: me.name, token: me.token, score: 0, connected: true, photos: view.myPhotos.slice() }],
-      seq: 1, phase: 'lobby', settings: { count: 10, ambiance: 'decontracte', cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
+      seq: 1, stats: {}, phase: 'lobby', settings: { count: 10, ambiance: 'decontracte', cats: { susceptible: true, echelle: true, plusmoins: true, chiffre: true, galerie: true, auteur: true } }, targets: {},
       plan: [], step: 0, qid: 0, q: null, answers: {}, endsAt: 0, timer: null, reveal: null,
       used: new Set(), auteur: null
     };
@@ -201,7 +209,7 @@
       clearTimeout(H.timer);
       H.players = H.players.filter((x) => x.connected);
       H.players.forEach((x) => { x.score = 0; });
-      Object.assign(H, { phase: 'lobby', plan: [], step: 0, q: null, reveal: null, answers: {}, auteur: null });
+      Object.assign(H, { stats: {}, phase: 'lobby', plan: [], step: 0, q: null, reveal: null, answers: {}, auteur: null });
       return hostBroadcast();
     }
   }
@@ -258,6 +266,7 @@
       }
     }
     H.players.forEach((p) => { p.score = 0; });
+    H.stats = {};
     H.plan = plan; H.step = 0;
     track('partie-lancee');
     hostStep();
@@ -421,6 +430,9 @@
       results.push({ id: p.id, name: p.name, shown, pts });
     }
     let answerText = null, extraLabel = null;
+    const st = (id) => (H.stats[id] = H.stats[id] || { elu: 0, previsible: 0, piege: 0, culture: 0, oeil: 0 });
+    if (q.type === 'plusmoins' || q.type === 'chiffre') results.forEach((r) => { st(r.id).culture += r.pts; });
+    if (q.type === 'galerie') results.forEach((r) => { if (r.pts) st(r.id).oeil++; });
     if (q.type === 'susceptible') {
       const tally = {};
       Object.values(H.answers).forEach((a) => { tally[+a.v] = (tally[+a.v] || 0) + 1; });
@@ -431,6 +443,7 @@
         if (a && top.includes(+a.v)) { r.pts = 500; H.players.find((p) => p.id === r.id).score += 500; }
       }
       answerText = max ? top.map((i) => q.choiceNames[i]).join(' et ') : 'Personne n’a voté';
+      if (max) top.forEach((i) => { const s2 = st(q.choices[i]); s2.elu++; s2.eluPrompt = q.prompt; });
       extraLabel = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([i, n]) => q.choiceNames[i] + ' : ' + n + ' vote' + (n > 1 ? 's' : '')).join(' · ');
     }
     if (q.type === 'echelle') {
@@ -449,6 +462,7 @@
           r.pts = pts; H.players.find((p) => p.id === r.id).score += pts;
         }
         const me = results.find((r) => r.id === q.target);
+        st(q.target).previsible += good;
         if (me) { me.pts = 100 * good; H.players.find((p) => p.id === q.target).score += me.pts; }
         answerText = truth + ' / 10';
         extraLabel = q.targetName + ' : « ' + q.prompt + ' »';
@@ -460,6 +474,7 @@
     }
     if (q.type === 'auteur' && fooled) {
       const owner = H.players.find((p) => p.id === q.owner);
+      if (owner) st(owner.id).piege += fooled;
       if (owner) { owner.score += 150 * fooled; results.push({ id: owner.id, name: owner.name, shown: 'auteur·rice, ' + fooled + ' piégé' + (fooled > 1 ? 's' : ''), pts: 150 * fooled }); }
     }
     results.sort((a, b) => b.pts - a.pts);
@@ -496,6 +511,24 @@
     hostBroadcast();
   }
 
+  // Trophées de fin de partie (pour l'écran final et la carte à partager)
+  function awards() {
+    const out = [];
+    const best = (k) => {
+      let id = null, v = 0;
+      for (const [pid, x] of Object.entries(H.stats || {})) if ((x[k] || 0) > v) { v = x[k]; id = pid; }
+      const p = id && H.players.find((y) => y.id === id);
+      return p ? { name: p.name, v, x: H.stats[id] } : null;
+    };
+    const e = best('elu');
+    if (e) out.push({ e: '👉', t: e.x.eluPrompt ? e.x.eluPrompt.replace(/^Qui est /, '').replace(/ \?$/, '') : 'Élu par le groupe', n: e.name });
+    const pv = best('previsible'); if (pv) out.push({ e: '🔮', t: 'Le livre ouvert : le plus facile à deviner', n: pv.name });
+    const pg = best('piege'); if (pg) out.push({ e: '🕵️', t: 'Roi du bluff : a piégé ' + pg.v + ' fois', n: pg.name });
+    const cu = best('culture'); if (cu) out.push({ e: '🧠', t: 'Le cerveau : champion des chiffres', n: cu.name });
+    const oe = best('oeil'); if (oe) out.push({ e: '👀', t: 'Œil de lynx : reconnaît toutes les photos', n: oe.name });
+    return out.slice(0, 4);
+  }
+
   function publicState(forId) {
     const q = H.q;
     const pq = q && {
@@ -514,7 +547,7 @@
         eligible: H.phase === 'question' ? hostEligible(p.id) : H.phase === 'write' ? p.connected : false
       })),
       q: pq, reveal: H.reveal, write: H.phase === 'write' ? { prompt: H.auteur.prompt } : null,
-      ambiance: H.settings.ambiance, you: forId
+      ambiance: H.settings.ambiance, awards: H.phase === 'end' ? awards() : null, you: forId
     };
   }
 
@@ -535,7 +568,7 @@
     return JSON.parse(JSON.stringify({
       pin: H.pin, gen: H.gen, hostId: H.hostId, seq: H.seq, phase: H.phase, settings: H.settings, targets: H.targets,
       plan: H.plan, step: H.step, qid: H.qid, q, answers: H.answers, remaining: Math.max(0, H.endsAt - Date.now()), dur: H.dur,
-      reveal: H.reveal, used: [...H.used], auteur: H.auteur,
+      reveal: H.reveal, used: [...H.used], auteur: H.auteur, stats: H.stats,
       players: H.players.map((p) => ({ id: p.id, name: p.name, token: p.token, score: p.score, connected: p.connected }))
     }));
   }
@@ -592,7 +625,7 @@
       peer: null, pin: snap.pin, gen: snap.gen + 1, hostId: mine.id, conns: new Map(), connObjs: new Map(), lastSnap: 0, aloneSince: 0,
       players: snap.players.map((p) => Object.assign({}, p, { connected: p.id === mine.id, photos: p.id === mine.id ? view.myPhotos.slice() : [], lastSeen: Date.now() })),
       seq: snap.seq, phase: snap.phase, settings: snap.settings, targets: snap.targets || {}, plan: snap.plan, step: snap.step, qid: snap.qid + 1,
-      q: snap.q, answers: snap.answers || {}, endsAt: 0, dur: snap.dur, timer: null, reveal: snap.reveal, used: new Set(snap.used || []), auteur: snap.auteur
+      q: snap.q, answers: snap.answers || {}, endsAt: 0, dur: snap.dur, timer: null, reveal: snap.reveal, used: new Set(snap.used || []), auteur: snap.auteur, stats: snap.stats || {}
     };
     if (H.q && H.q.mediaKey) H.q.mediaData = view.media[H.q.mediaKey];
     view.myId = mine.id; view.lost = false;
@@ -751,7 +784,7 @@
       <div class="brand">Tour de <span>Table</span></div>
       <p class="tag">Une salle, un code, des manches surprises. Sans appli, sans compte.</p>
       <label>Ton pseudo<input id="name" maxlength="16" autocomplete="nickname" value="${esc(me.name)}" placeholder="Ex. Camille"></label>
-      <button id="create" class="primary">Créer une salle</button>
+      <button id="create" class="primary big">⚡ Créer une partie</button>
       <div class="or">ou</div>
       <label>Code de la salle<input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" value="${esc(view.pin)}" placeholder="1234"></label>
       <button id="join">Rejoindre</button>
@@ -775,49 +808,44 @@
     const s = view.s;
     const link = shareLink();
     const host = isHost();
+    const det = (id, title, body) => `<details class="card fold" data-fold="${id}" ${view.open && view.open[id] ? 'open' : ''}><summary><h3>${title}</h3></summary>${body}</details>`;
+    const photos = `<p class="mute small">Choisis jusqu'à ${MAX_PHOTOS} photos de ta galerie : les autres devront deviner à qui elles appartiennent. Elles sont réduites sur ton téléphone (la position GPS est supprimée), envoyées seulement aux joueurs de cette salle, et disparaissent quand la partie se ferme.</p>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+        <button id="pickPhotos">Choisir mes photos</button>
+        <div class="thumbs" id="thumbs"></div>`;
     return `
       <div class="top"><span>Salle</span><span>${host ? 'Tu es l’hôte' : 'Joueur'}</span></div>
       <div class="pin">${esc(s.pin)}</div>
       <div class="card">
         <div class="qr">${qrSVG(link)}</div>
-        <button id="share" class="small ghost" style="align-self:center">📤 Partager le lien d'invitation</button>
+        <button id="share" class="small ghost" style="align-self:center">📤 Inviter (WhatsApp, SMS…)</button>
       </div>
       <div class="card">
         <h3>Joueurs</h3>
         <div class="players" id="players"></div>
-        <button id="pingBtn" class="small ghost" style="align-self:flex-start">📶 Tester ma connexion</button>
-        <p class="mute small">🟢 bonne connexion · 🟠 connexion faible · ⚪ déconnecté</p>
-      </div>
-      <div class="card">
-        <h3>🖼️ Tes photos pour la manche Galerie</h3>
-        <p class="mute small">Choisis jusqu'à ${MAX_PHOTOS} photos de ta galerie : les autres devront deviner à qui elles appartiennent. Elles sont réduites sur ton téléphone (la position GPS est supprimée), envoyées seulement aux joueurs de cette salle, et disparaissent quand la partie se ferme.</p>
-        <input id="file" type="file" accept="image/*" multiple hidden>
-        <button id="pickPhotos">Choisir mes photos</button>
-        <div class="thumbs" id="thumbs"></div>
+        <div class="row" style="justify-content:space-between"><span class="mute small" style="flex:1">🟢 bonne · 🟠 faible · ⚪ déconnecté</span><button id="pingBtn" class="small ghost" style="flex:0 0 auto">📶 Tester</button></div>
       </div>
       ${host ? `
       <div class="card">
         <h3>Ambiance de la soirée</h3>
         <div class="amb" id="amb">${Object.entries(AMB).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
-        <p class="mute small">L’ambiance change les questions de « Plus susceptible », « Échelle 1 à 10 » et « Qui a écrit ça ? ».</p>
       </div>
-      <div class="card">
-        <h3>Packs</h3>
-        ${Object.entries(CFG.packs).map(([id, pk]) => `
+      <button id="start" class="primary big">⚡ Lancer la partie</button>
+      <p class="mute small center">${H.settings.count} manches, toutes les catégories disponibles. Tout se règle ci-dessous.</p>
+      ${det('photos', '🖼️ Mes photos (facultatif)', photos)}
+      ${det('packs', '🎁 Packs gratuits avec pub', Object.entries(CFG.packs).map(([id, pk]) => `
           <div class="pack">
             <div><b>${pk.nom}</b><p class="mute small">${pk.desc}</p></div>
             <div class="packact">${packs.has(id) ? `<span class="ok small">✓ ${packs.label(id)}</span>${id === 'perso' ? '<button class="small" id="editPerso">Mes questions</button>' : ''}` : `<button class="small primary" data-unlock="${id}">📺 Débloquer</button>`}</div>
-          </div>`).join('')}
-      </div>
-      <div class="card">
-        <h3>Réglages</h3>
+          </div>`).join(''))}
+      ${det('reglages', '⚙️ Réglages', `
         <label>Nombre de manches
           <select id="rounds">${[5, 10, 15, 20].map((n) => `<option ${n === H.settings.count ? 'selected' : ''}>${n}</option>`).join('')}</select>
         </label>
-        <div class="cats">${Object.entries(CATS).map(([k, v]) => `<label><input type="checkbox" data-cat="${k}" ${H.settings.cats[k] ? 'checked' : ''}>${v}</label>`).join('')}</div>
-        <p class="mute small" id="catsNote"></p>
-        <button id="start" class="primary">Lancer la partie</button>
-      </div>` : `<div class="wait">Ambiance : <b>${esc(AMB[s.ambiance]?.nom || '')}</b><br>En attente du lancement par l'hôte…</div>`}
+        <div class="cats">${Object.entries(CATS).map(([k, v]) => `<label><input type="checkbox" data-cat="${k}" ${H.settings.cats[k] ? 'checked' : ''}>${v}</label>`).join('')}</div>`)}
+      <p class="mute small" id="catsNote"></p>` : `
+      <div class="wait">Ambiance : <b>${esc(AMB[s.ambiance]?.nom || '')}</b><br>En attente du lancement par l'hôte…</div>
+      ${det('photos', '🖼️ Mes photos (facultatif)', photos)}`}
       ${s.ambiance === 'coquin' ? '<div class="banner">🔞 Cette partie contient des questions coquines réservées aux adultes. Chacun peut passer une question qui le met mal à l’aise.</div>' : ''}
       <div id="lost"></div>`;
   }
@@ -825,7 +853,7 @@
   function header() {
     const s = view.s;
     return `<div class="top"><span>Manche ${s.step + 1}/${s.total}</span><span>${esc(CATS[s.cat] || '')}</span></div>
-      <div class="bar"><i id="bar"></i></div><div id="lost"></div>`;
+      <div class="bar"><i id="bar"></i></div>${s.phase !== 'reveal' && RULES[s.cat] ? `<p class="rule">${RULES[s.cat]}</p>` : ''}<div id="lost"></div>`;
   }
 
   function writeHTML() {
@@ -890,12 +918,73 @@
   function endHTML() {
     const ps = view.s.players.slice().sort((a, b) => b.score - a.score);
     const pod = (p, cls, medal) => p ? `<div class="${cls}"><span>${medal}</span>${esc(p.name)}<br>${p.score}</div>` : '';
+    const aw = view.s.awards || [];
     return `
       <div class="brand center" style="margin-top:4vh">Fin de partie !</div>
       <div class="podium">${pod(ps[1], 'p2', '🥈')}${pod(ps[0], 'p1', '🥇')}${pod(ps[2], 'p3', '🥉')}</div>
+      ${aw.length ? `<div class="card"><h3>Les trophées de la soirée</h3>${aw.map((a) => `<div class="award"><span>${a.e}</span><div><b>${esc(a.n)}</b><p class="mute small">${esc(a.t)}</p></div></div>`).join('')}</div>` : ''}
+      <button id="shareCard" class="primary">📸 Partager le podium (story, WhatsApp…)</button>
       <div class="card"><div class="scores" id="scores"></div></div>
-      ${isHost() ? '<button id="again" class="primary">Rejouer avec les mêmes joueurs</button>' : '<p class="mute center">L\'hôte peut relancer une partie.</p>'}
+      ${isHost() ? '<button id="again" class="primary">🔁 Rejouer avec les mêmes joueurs</button>' : '<p class="mute center small">L’hôte peut relancer une partie avec le même groupe.</p><button id="newGame">🎲 Créer ma propre partie</button>'}
       <button id="quit" class="ghost">Quitter</button>`;
+  }
+
+  // Carte de fin au format story (1080 × 1920) : podium, trophées, lien du jeu
+  function drawCard() {
+    const s = view.s, W = 1080, Hh = 1920;
+    const c = document.createElement('canvas'); c.width = W; c.height = Hh;
+    const g = c.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, W, Hh); bg.addColorStop(0, '#2d1d63'); bg.addColorStop(0.55, '#16112b'); bg.addColorStop(1, '#4a1747');
+    g.fillStyle = bg; g.fillRect(0, 0, W, Hh);
+    const font = (w, px) => `${w} ${px}px ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    const text = (t, x, y, f, col, align = 'center', maxW = W - 120) => { g.font = f; g.fillStyle = col; g.textAlign = align; g.fillText(t, x, y, maxW); };
+    g.font = font(900, 92);
+    const w1 = g.measureText('Tour de ').width, w2 = g.measureText('Table').width, xs = (W - w1 - w2) / 2;
+    text('Tour de ', xs, 190, font(900, 92), '#f5f1ff', 'left');
+    text('Table', xs + w1, 190, font(900, 92), '#ffcf3f', 'left');
+    text('Notre soirée du ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }), W / 2, 260, font(600, 40), '#b4a9d9');
+    const ps = s.players.slice().sort((a, b) => b.score - a.score);
+    const cols = [[ps[1], 360, '#3d3270', '🥈'], [ps[0], 480, '#ffcf3f', '🥇'], [ps[2], 290, '#3d3270', '🥉']];
+    const base = 900, bw = 290, gap = 30, x0 = (W - (3 * bw + 2 * gap)) / 2;
+    cols.forEach(([p, h, col, medal], i) => {
+      if (!p) return;
+      const x = x0 + i * (bw + gap);
+      g.fillStyle = col; g.beginPath(); g.roundRect ? g.roundRect(x, base - h, bw, h, [28, 28, 0, 0]) : g.rect(x, base - h, bw, h); g.fill();
+      const dark = col === '#ffcf3f';
+      text(medal, x + bw / 2, base - h + 90, font(400, 72), '#fff');
+      text(p.name, x + bw / 2, base - h + 170, font(800, 50), dark ? '#1b1430' : '#f5f1ff', 'center', bw - 30);
+      text(fmt(p.score) + ' pts', x + bw / 2, base - h + 230, font(700, 38), dark ? '#3a2a00' : '#b4a9d9', 'center', bw - 30);
+    });
+    let y = 990;
+    (s.awards || []).slice(0, 4).forEach((a) => {
+      g.fillStyle = 'rgba(255,255,255,0.07)'; g.beginPath(); g.roundRect ? g.roundRect(80, y, W - 160, 130, 26) : g.rect(80, y, W - 160, 130); g.fill();
+      text(a.e, 150, y + 88, font(400, 60), '#fff');
+      text(a.n, 220, y + 58, font(800, 44), '#ffcf3f', 'left', W - 340);
+      text(a.t, 220, y + 105, font(600, 32), '#f5f1ff', 'left', W - 340);
+      y += 150;
+    });
+    text('Joue gratuitement, sans appli :', W / 2, 1790, font(600, 36), '#b4a9d9');
+    text(location.host + location.pathname.replace(/index\.html$/, ''), W / 2, 1845, font(800, 40), '#ffcf3f');
+    return c;
+  }
+
+  async function shareCard() {
+    const c = drawCard();
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const file = new File([blob], 'tour-de-table-podium.png', { type: 'image/png' });
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Tour de Table', text: '🎲 Notre soirée Tour de Table ! Joue gratuitement sans appli : ' + url });
+        track('carte-partagee');
+        return;
+      }
+    } catch { return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'tour-de-table-podium.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Image du podium téléchargée');
+    track('carte-telechargee');
   }
 
   function hostSkipBtn(label) { return isHost() ? `<button id="skip" class="small ghost" style="align-self:center">${label} ⏭</button>` : ''; }
@@ -915,7 +1004,7 @@
     if (st) {
       const n = s.players.filter((p) => p.connected).length;
       st.disabled = n < 2;
-      st.textContent = n < 2 ? 'En attente d’un 2e joueur…' : `Lancer la partie (${n} joueurs)`;
+      st.textContent = n < 2 ? 'En attente d’un 2e joueur…' : `⚡ Lancer la partie (${n} joueurs)`;
     }
     const cn = document.getElementById('catsNote');
     if (cn && H) {
@@ -962,7 +1051,7 @@
     on('pin', 'keydown', (e) => { if (e.key === 'Enter') document.getElementById('join').click(); });
     on('share', 'click', async () => {
       const link = shareLink();
-      const text = `Rejoins ma partie de Tour de Table ! Code : ${view.s.pin}`;
+      const text = `🎲 Rejoins ma partie de Tour de Table ! Code ${view.s.pin} · rien à installer, ça s'ouvre dans le navigateur :`;
       try {
         if (navigator.share) await navigator.share({ title: 'Tour de Table', text, url: link });
         else { await navigator.clipboard.writeText(text + ' ' + link); toast('Lien copié !'); }
@@ -980,7 +1069,8 @@
       toast(out.length + ' photo' + (out.length > 1 ? 's' : '') + ' ajoutée' + (out.length > 1 ? 's' : ''));
       updateDynamic();
     });
-    on('rounds', 'change', (e) => { H.settings.count = +e.target.value; });
+    on('rounds', 'change', (e) => { H.settings.count = +e.target.value; refreshLobby(); });
+    document.querySelectorAll('[data-fold]').forEach((d) => d.addEventListener('toggle', () => { view.open = view.open || {}; view.open[d.dataset.fold] = d.open; }));
     document.querySelectorAll('[data-cat]').forEach((el) => el.addEventListener('change', () => { H.settings.cats[el.dataset.cat] = el.checked; updateDynamic(); }));
     document.querySelectorAll('[data-amb]').forEach((b) => b.addEventListener('click', () => {
       const k = b.dataset.amb, a = AMB[k];
@@ -1003,6 +1093,8 @@
     on('start', 'click', () => send({ t: 'start' }));
     on('skip', 'click', () => send({ t: 'skip' }));
     on('again', 'click', () => send({ t: 'again' }));
+    on('shareCard', 'click', shareCard);
+    on('newGame', 'click', () => { location.href = location.pathname + (params.get('peerhost') ? `?peerhost=${params.get('peerhost')}&peerport=${params.get('peerport') || 9000}` : ''); });
     on('quit', 'click', () => { location.href = location.pathname + (params.get('peerhost') ? `?peerhost=${params.get('peerhost')}&peerport=${params.get('peerport') || 9000}` : ''); });
     document.querySelectorAll('[data-choice]').forEach((b) => b.addEventListener('click', () => {
       b.classList.add('sel');
