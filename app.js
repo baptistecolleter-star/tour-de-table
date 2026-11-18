@@ -43,7 +43,7 @@
     get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* navigation privée */ } }
   };
-  // Packs débloqués sur ce téléphone : { coquin: { a_vie: true } | { jusqua: timestamp } }
+  // Packs débloqués par pub sur ce téléphone : { coquin: { jusqua: timestamp } }
   const packs = {
     all() { try { return JSON.parse(store.get('tdt-packs', '{}')) || {}; } catch { return {}; } },
     has(id) { const p = packs.all()[id]; return !!p && !!p.jusqua && p.jusqua > Date.now(); },
