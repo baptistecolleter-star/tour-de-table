@@ -26,7 +26,7 @@ GitHub Pages ou Cloudflare Pages fonctionnent aussi : ce sont des fichiers stati
 | 🔟 Sur une échelle de 1 à 10 | Un joueur se note en secret sur une affirmation, les autres devinent sa note | 1 000 si exact, 600 à 1 près, 300 à 2 près ; le joueur noté gagne 100 par bon pronostic |
 | ⚖️ Plus ou moins | Deux choix : lequel est le plus peuplé, le plus haut, le plus ancien… | 500 à 1 000 selon la rapidité |
 | 🔢 Le juste chiffre | Estimer un nombre (habitants, hauteur, année…) | Jusqu'à 1 000 selon la proximité, +200 pour le plus proche |
-| 🖼️ Galerie | Une photo d'un joueur : à qui est-elle ? | 500 à 1 000 selon la rapidité |
+| 🖼️ Galerie | Chaque joueur sélectionne des photos dans sa galerie (autant qu'il veut), le jeu en tire 20 au hasard, le joueur refuse celles qu'il ne veut pas montrer (remplacées au hasard) puis valide. Ensuite : à qui est cette photo ? | 500 à 1 000 selon la rapidité |
 | ✍️ Qui a écrit ça ? | Chacun répond en secret, puis on devine qui a écrit chaque réponse | 500 à 1 000 ; l'auteur gagne 150 par joueur piégé |
 
 Chaque nouvelle manche a une banque de 500 questions (`questions.js`). « Plus susceptible », Galerie et « Qui a écrit ça ? » demandent au moins 3 joueurs.

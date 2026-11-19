@@ -16,7 +16,7 @@
     ? { host: params.get('peerhost'), port: +(params.get('peerport') || 9000), path: '/', secure: false, debug: 1, config: { iceServers: [] } }
     : { debug: 1 };
   const MAX_PLAYERS = 12;
-  const MAX_PHOTOS = 10;
+  const MAX_PHOTOS = 20; // photos tirées au hasard dans la sélection du joueur
   const Q = window.TDT_Q;
   const DUR = { susceptible: 20, plusmoins: 15, chiffre: 25, echelle: 25, galerie: 20, auteur: 20, write: 60, reveal: 11 };
   const CATS = {
@@ -835,7 +835,8 @@
     const link = shareLink();
     const host = isHost();
     const det = (id, title, body) => `<details class="card fold" data-fold="${id}" ${view.open && view.open[id] ? 'open' : ''}><summary><h3>${title}</h3></summary>${body}</details>`;
-    const photos = `<p class="mute small">Choisis jusqu'à ${MAX_PHOTOS} photos de ta galerie : les autres devront deviner à qui elles appartiennent. Elles sont réduites sur ton téléphone (la position GPS est supprimée), envoyées seulement aux joueurs de cette salle, et disparaissent quand la partie se ferme.</p>
+    const photos = `<p class="mute small">Ouvre ta galerie et sélectionne autant de photos que tu veux (un album entier, ou glisse le doigt pour en cocher plein d'un coup). Le jeu en tire ${MAX_PHOTOS} au hasard, tu refuses celles que tu ne veux pas montrer, puis tu valides. Rien n'est envoyé avant ta validation.</p>
+        <p class="mute small">Les photos sont réduites sur ton téléphone (la position GPS est supprimée), envoyées seulement aux joueurs de cette salle, et disparaissent quand la partie se ferme.</p>
         <input id="file" type="file" accept="image/*" multiple hidden>
         <button id="pickPhotos">Choisir mes photos</button>
         <div class="thumbs" id="thumbs"></div>`;
@@ -1039,7 +1040,7 @@
     const th = document.getElementById('thumbs');
     if (th) th.innerHTML = view.myPhotos.map((d) => `<img src="${d}" alt="">`).join('');
     const pb = document.getElementById('pickPhotos');
-    if (pb) pb.textContent = view.myPhotos.length ? `Changer mes photos (${view.myPhotos.length})` : 'Choisir mes photos';
+    if (pb) pb.textContent = view.myPhotos.length ? `✓ ${view.myPhotos.length} photos validées · modifier` : 'Ouvrir ma galerie';
     const st = document.getElementById('start');
     if (st) {
       const n = s.players.filter((p) => p.connected).length;
@@ -1140,17 +1141,15 @@
         else { await navigator.clipboard.writeText(text + ' ' + link); toast('Lien copié !'); }
       } catch { /* partage annulé */ }
     });
-    on('pickPhotos', 'click', () => document.getElementById('file').click());
+    on('pickPhotos', 'click', () => {
+      if (view.photoSel && view.photoSel.length) return openPhotoReview();
+      document.getElementById('file').click();
+    });
     on('file', 'change', async (e) => {
-      const files = [...e.target.files].slice(0, MAX_PHOTOS);
+      const files = [...e.target.files].filter((f) => !f.type || f.type.startsWith('image/'));
+      e.target.value = '';
       if (!files.length) return;
-      toast('Préparation des photos…');
-      const out = [];
-      for (const f of files) { const d = await shrink(f).catch(() => null); if (d) out.push(d); }
-      view.myPhotos = out;
-      send({ t: 'photos', list: out });
-      toast(out.length + ' photo' + (out.length > 1 ? 's' : '') + ' ajoutée' + (out.length > 1 ? 's' : ''));
-      updateDynamic();
+      await drawPhotos(files);
     });
     on('rounds', 'change', (e) => { H.settings.count = +e.target.value; refreshLobby(); });
     document.querySelectorAll('[data-fold]').forEach((d) => d.addEventListener('toggle', () => { view.open = view.open || {}; view.open[d.dataset.fold] = d.open; }));
@@ -1314,18 +1313,75 @@
     };
   }
 
+  // --- Galerie : tirage au hasard de 20 photos, refus possible, validation ----------
+  // view.photoPool : photos sélectionnées mais pas (encore) tirées
+  // view.photoSel  : tirage en cours [{ data }] ; view.myPhotos : sélection validée et envoyée
+  async function drawPhotos(files) {
+    view.photoPool = shuffle(files);
+    view.photoSel = [];
+    view.refused = 0;
+    const m = modal(`<h3>🎲 Tirage de tes photos…</h3><p class="mute small" id="drawProg">Préparation</p>`);
+    while (view.photoSel.length < MAX_PHOTOS && view.photoPool.length) {
+      const d = await shrink(view.photoPool.shift()).catch(() => null);
+      if (d) view.photoSel.push({ data: d });
+      const pr = m.querySelector('#drawProg'); if (pr) pr.textContent = `${view.photoSel.length} / ${Math.min(MAX_PHOTOS, view.photoSel.length + view.photoPool.length)}`;
+    }
+    if (!view.photoSel.length) { closeModal(); return toast('Aucune photo lisible dans ta sélection'); }
+    openPhotoReview();
+  }
+
+  function openPhotoReview() {
+    const sel = view.photoSel || [];
+    const left = (view.photoPool || []).length;
+    const m = modal(`
+      <h3>Tes ${sel.length} photos tirées au hasard</h3>
+      <p class="mute small">Touche ✕ pour refuser une photo${left ? ' : une autre la remplace au hasard' : ''}. Les autres joueurs ne verront rien avant que tu valides.</p>
+      <div class="pgrid">${sel.map((p, i) => `<div class="pitem"><img src="${p.data}" alt="Photo ${i + 1}"><button class="pno" data-refuse="${i}" aria-label="Refuser cette photo">✕</button></div>`).join('')}</div>
+      <p class="mute small center">${left ? `${left} photo${left > 1 ? 's' : ''} en réserve pour remplacer celles que tu refuses.` : 'Plus de photo en réserve : une photo refusée sera simplement retirée.'}</p>
+      <button class="primary" id="photosOk">Valider ces ${sel.length} photos</button>
+      <div class="row"><button class="small" id="photosAgain">🔀 Nouveau tirage</button><button class="small" id="photosNone">Ne pas jouer avec mes photos</button></div>`);
+    m.querySelectorAll('[data-refuse]').forEach((b) => b.addEventListener('click', async () => {
+      const i = +b.dataset.refuse;
+      b.disabled = true;
+      let rep = null;
+      while (!rep && view.photoPool.length) rep = await shrink(view.photoPool.shift()).catch(() => null);
+      view.refused = (view.refused || 0) + 1;
+      if (rep) view.photoSel[i] = { data: rep }; else view.photoSel.splice(i, 1);
+      if (!view.photoSel.length) { closeModal(); view.myPhotos = []; send({ t: 'photos', list: [] }); updateDynamic(); return toast('Aucune photo gardée'); }
+      openPhotoReview();
+    }));
+    // Toucher une miniature : l'afficher en grand avant de décider
+    m.querySelectorAll('.pitem img').forEach((img, i) => img.addEventListener('click', () => {
+      const lb = document.createElement('div');
+      lb.className = 'lightbox';
+      lb.innerHTML = `<img src="${view.photoSel[i].data}" alt="Photo ${i + 1}"><div class="row"><button id="lbKeep">Garder</button><button class="refuse" id="lbNo">✕ Refuser</button></div>`;
+      document.body.appendChild(lb);
+      lb.querySelector('#lbKeep').onclick = () => lb.remove();
+      lb.querySelector('#lbNo').onclick = () => { lb.remove(); m.querySelector(`[data-refuse="${i}"]`).click(); };
+      lb.addEventListener('click', (e) => { if (e.target === lb) lb.remove(); });
+    }));
+    m.querySelector('#photosOk').onclick = () => {
+      view.myPhotos = view.photoSel.map((p) => p.data);
+      send({ t: 'photos', list: view.myPhotos });
+      closeModal(); updateDynamic();
+      toast(`${view.myPhotos.length} photos prêtes pour la manche Galerie`);
+    };
+    m.querySelector('#photosAgain').onclick = () => { closeModal(); view.photoSel = []; document.getElementById('file')?.click(); };
+    m.querySelector('#photosNone').onclick = () => { closeModal(); view.photoSel = []; view.photoPool = []; view.myPhotos = []; send({ t: 'photos', list: [] }); updateDynamic(); toast('Tes photos ne seront pas utilisées'); };
+  }
+
   // Réduit une photo (720 px max, JPEG) : la copie ne garde aucune métadonnée (GPS, appareil…)
   function shrink(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const m = 720, r = Math.min(1, m / Math.max(img.naturalWidth, img.naturalHeight));
+        const m = 640, r = Math.min(1, m / Math.max(img.naturalWidth, img.naturalHeight));
         const c = document.createElement('canvas');
         c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        resolve(c.toDataURL('image/jpeg', 0.72));
+        resolve(c.toDataURL('image/jpeg', 0.7));
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image illisible')); };
       img.src = url;
