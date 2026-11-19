@@ -17,6 +17,7 @@
     : { debug: 1 };
   const MAX_PLAYERS = 12;
   const MAX_PHOTOS = 20; // photos tirées au hasard dans la sélection du joueur
+  const MIN_CONSEILLE = 50; // sélection conseillée pour que le tirage soit vraiment surprenant
   const Q = window.TDT_Q;
   const DUR = { susceptible: 20, plusmoins: 15, chiffre: 25, echelle: 25, galerie: 20, auteur: 20, write: 60, reveal: 11 };
   const CATS = {
@@ -1144,12 +1145,13 @@
     });
     on('pickPhotos', 'click', () => {
       if (view.photoSel && view.photoSel.length) return openPhotoReview();
-      document.getElementById('file').click();
+      openPhotoGuide();
     });
     on('file', 'change', async (e) => {
       const files = [...e.target.files].filter((f) => !f.type || f.type.startsWith('image/'));
       e.target.value = '';
       if (!files.length) return;
+      if (files.length <= MAX_PHOTOS) return tooFewPhotos(files);
       await drawPhotos(files);
     });
     on('rounds', 'change', (e) => { H.settings.count = +e.target.value; refreshLobby(); });
@@ -1317,6 +1319,36 @@
   // --- Galerie : tirage au hasard de 20 photos, refus possible, validation ----------
   // view.photoPool : photos sélectionnées mais pas (encore) tirées
   // view.photoSel  : tirage en cours [{ data }] ; view.myPhotos : sélection validée et envoyée
+  // Conseils avant d'ouvrir la galerie, adaptés au téléphone
+  function openPhotoGuide() {
+    const ua = navigator.userAgent;
+    const ios = /iPhone|iPad|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
+    const android = /Android/.test(ua);
+    const astuce = ios
+      ? 'Sur iPhone : dans l’onglet « Photos », pose le doigt sur une photo puis fais-le glisser sur plusieurs lignes : des dizaines de photos se cochent d’un coup.'
+      : android
+        ? 'Sur Android : ouvre un album (par exemple « Appareil photo »), fais un appui long sur une photo, puis touche « Tout sélectionner » si ton téléphone le propose, ou fais glisser le doigt.'
+        : 'Sélectionne un dossier entier de photos (Ctrl+A ou Cmd+A dans la fenêtre de choix).';
+    const m = modal(`<h3>🎲 Le jeu choisit à ta place</h3>
+      <p>Sélectionne <b>au moins ${MIN_CONSEILLE} photos</b>, sans trop regarder. Le jeu en tirera ${MAX_PHOTOS} au hasard.</p>
+      <p class="mute small">${astuce}</p>
+      <p class="mute small">Ensuite, tu verras les ${MAX_PHOTOS} photos tirées et tu pourras refuser celles que tu ne veux pas montrer. Rien n’est envoyé avant ta validation.</p>
+      <button class="primary" id="guideGo">Ouvrir ma galerie</button><button class="ghost" id="cancel">Annuler</button>`);
+    m.querySelector('#cancel').onclick = closeModal;
+    m.querySelector('#guideGo').onclick = () => { closeModal(); document.getElementById('file').click(); };
+  }
+
+  // Trop peu de photos sélectionnées : pas de vrai tirage au hasard possible
+  function tooFewPhotos(files) {
+    const m = modal(`<h3>Seulement ${files.length} photo${files.length > 1 ? 's' : ''}</h3>
+      <p>Avec ${MAX_PHOTOS} photos ou moins, le jeu ne peut pas tirer au hasard : il les garde toutes, et tu sais déjà lesquelles les autres vont voir.</p>
+      <p class="mute small">Pour un vrai tirage surprise, sélectionne au moins ${MIN_CONSEILLE} photos.</p>
+      <button class="primary" id="more">Sélectionner plus de photos</button>
+      <button id="keep">Garder ces ${files.length} photos</button>`);
+    m.querySelector('#more').onclick = () => { closeModal(); document.getElementById('file').click(); };
+    m.querySelector('#keep').onclick = () => { closeModal(); drawPhotos(files); };
+  }
+
   async function drawPhotos(files) {
     view.photoPool = shuffle(files);
     view.photoSel = [];
@@ -1336,6 +1368,7 @@
     const left = (view.photoPool || []).length;
     const m = modal(`
       <h3>Tes ${sel.length} photos tirées au hasard</h3>
+      ${(view.photoPool || []).length + sel.length < MIN_CONSEILLE && sel.length >= MAX_PHOTOS ? `<p class="mute small">Astuce : avec au moins ${MIN_CONSEILLE} photos sélectionnées, le tirage est plus surprenant.</p>` : ''}
       <p class="mute small">Touche ✕ pour refuser une photo${left ? ' : une autre la remplace au hasard' : ''}. Les autres joueurs ne verront rien avant que tu valides.</p>
       <div class="pgrid">${sel.map((p, i) => `<div class="pitem"><img src="${p.data}" alt="Photo ${i + 1}"><button class="pno" data-refuse="${i}" aria-label="Refuser cette photo">✕</button></div>`).join('')}</div>
       <p class="mute small center">${left ? `${left} photo${left > 1 ? 's' : ''} en réserve pour remplacer celles que tu refuses.` : 'Plus de photo en réserve : une photo refusée sera simplement retirée.'}</p>
@@ -1367,7 +1400,7 @@
       closeModal(); updateDynamic();
       toast(`${view.myPhotos.length} photos prêtes pour la manche Galerie`);
     };
-    m.querySelector('#photosAgain').onclick = () => { closeModal(); view.photoSel = []; document.getElementById('file')?.click(); };
+    m.querySelector('#photosAgain').onclick = () => { closeModal(); view.photoSel = []; openPhotoGuide(); };
     m.querySelector('#photosNone').onclick = () => { closeModal(); view.photoSel = []; view.photoPool = []; view.myPhotos = []; send({ t: 'photos', list: [] }); updateDynamic(); toast('Tes photos ne seront pas utilisées'); };
   }
 
