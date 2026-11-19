@@ -13,8 +13,9 @@ window.TDT_CONFIG = {
   },
   // Un pack débloqué par une pub reste ouvert pendant (heures) :
   dureePub: 24,
-  // Pause pub plein écran sur tous les téléphones toutes les N manches (0 = jamais) :
-  pubToutesLesManches: 3,
+  // Une pause pub plein écran par bloc de N manches, au milieu du bloc (0 = jamais).
+  // 10 → partie de 10 manches : 1 seule pub, après la 5e manche.
+  pubToutesLesManches: 10,
   // Durée de la pause pub entre les manches (secondes) :
   pubDureeSecondes: 8,
   // Durée de la fausse pub récompensée en mode démo (secondes) :

@@ -511,8 +511,9 @@
     if (H.phase !== 'reveal' && H.phase !== 'pub') return;
     if (H.phase === 'reveal') {
       if (H.q && H.q.type === 'auteur' && H.auteur && H.auteur.queue.length) return hostNextAuteur();
+      // Une pause pub toutes les N manches, placée au milieu de chaque bloc (10 manches → après la 5e)
       const done = H.step + 1, every = +CFG.pubToutesLesManches || 0;
-      if (every && done % every === 0 && done < H.plan.length) {
+      if (every && done % every === Math.ceil(every / 2) % every && done < H.plan.length) {
         H.phase = 'pub'; H.q = null; H.reveal = null; H.qid++; track('pause-pub');
         hostTimer(+CFG.pubDureeSecondes || 8, hostNext);
         return hostBroadcast();

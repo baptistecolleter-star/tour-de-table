@@ -37,7 +37,7 @@ Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikida
 
 - **Ambiance de la soirée** (réglée par l'hôte) : 😎 Décontractée, 🕯️ Sérieuse, 🔥 Coquine (18+). Elle change les questions de « Plus susceptible », « Échelle 1 à 10 » et « Qui a écrit ça ? ». Questions dans `packs.js`.
 - **Packs** : 🔥 Coquin et ✏️ Questions personnalisées. Gratuits : on les débloque pour 24 h en regardant une pub récompensée (mémorisé sur le téléphone de l'hôte).
-- **Pause pub** : une pub plein écran s'affiche sur tous les téléphones toutes les 3 manches (8 s), jamais après la dernière.
+- **Pause pub** : une seule pub plein écran (8 s) par tranche de 10 manches, au milieu (après la 5e manche), sur tous les téléphones ; jamais après la dernière manche.
 - Tout se règle dans `config.js` (fréquence, durées).
 - **Mode démo** tant que `adsenseClient` est vide : fausses pubs, aucun revenu.
 - **Passer aux vraies pubs** : 1) compte Google AdSense approuvé pour le site ; 2) demande d'accès « H5 Games Ads » (pubs plein écran et récompensées) ; 3) coller l'identifiant `ca-pub-…` dans `config.js` en gardant `adsenseTest: true` pour vérifier, puis le passer à `false` ; 4) ajouter un bandeau de consentement aux cookies (obligatoire en France) et une page de mentions légales. Le pack Coquin peut poser problème avec les règles publicitaires de Google : à vérifier lors de la demande.
