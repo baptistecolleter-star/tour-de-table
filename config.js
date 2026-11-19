@@ -27,5 +27,10 @@ window.TDT_CONFIG = {
   adsenseTest: true,
   // Compteur anonyme sans cookie : code GoatCounter (ex. 'tourdetable' pour
   // tourdetable.goatcounter.com). Vide = aucun comptage.
-  goatcounter: ''
+  goatcounter: '',
+  // true = cache les ambiances réservées aux adultes (Coquine, EVJF / EVG).
+  // À laisser sur true pendant l'examen du site par Google AdSense.
+  masquerAdulte: true,
+  // Coordonnées affichées dans les mentions légales et la page confidentialité
+  editeur: { nom: '', email: '' }
 };

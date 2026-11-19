@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f5c46">
+  <title>Politique de confidentialité · Tour de Table</title>
+  <meta name="description" content="Données utilisées par Tour de Table, cookies et publicité, vos droits.">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="doc">
+  <a class="back" href="./">← Retour au jeu</a>
+
+  <h1>Politique de confidentialité</h1>
+  <p class="lead">Tour de Table est conçu pour collecter le moins de données possible : pas de compte, pas de nom réel, pas de base de données.</p>
+
+  <h2>Responsable du traitement</h2>
+  <p><span data-editeur="nom" class="todo">[nom de l’éditeur à compléter]</span>. Contact : <a data-editeur="email" class="todo" href="#">[adresse e-mail à compléter]</a>.</p>
+
+  <h2>Ce que le jeu utilise</h2>
+  <ul>
+    <li><b>Votre pseudo</b> : visible par les autres joueurs de la salle pendant la partie, et gardé sur votre téléphone pour la prochaine fois.</li>
+    <li><b>Vos réponses et vos scores</b> : échangés entre les téléphones de la salle pendant la partie, puis effacés quand la partie se ferme. Ils ne sont enregistrés sur aucun serveur.</li>
+    <li><b>Vos photos (manche Galerie, facultative)</b> : vous choisissez les photos ; elles sont réduites sur votre téléphone, la position GPS et les autres informations cachées sont supprimées, puis elles sont envoyées seulement aux joueurs de la salle après votre validation. Elles disparaissent quand la partie se ferme.</li>
+    <li><b>La mise en relation des téléphones</b> : pour se connecter entre eux, les téléphones passent par un service de mise en relation (PeerJS), qui voit l’adresse IP des appareils le temps d’établir la connexion. Les échanges du jeu passent ensuite directement d’un téléphone à l’autre.</li>
+    <li><b>Les réglages enregistrés sur votre téléphone</b> (stockage local du navigateur) : pseudo, son activé ou non, packs débloqués et questions personnalisées. Ils ne quittent pas votre téléphone et vous pouvez les effacer en vidant les données du site dans votre navigateur.</li>
+  </ul>
+
+  <h2>Mesure d’audience</h2>
+  <p>Si elle est activée, la mesure d’audience compte des événements anonymes (partie créée, partie lancée, podium…) sans cookie et sans identifier les joueurs.</p>
+
+  <h2>Publicité et cookies</h2>
+  <p>Le jeu est financé par la publicité, fournie par Google (AdSense). Google et ses partenaires peuvent utiliser des cookies ou des identifiants pour afficher des publicités et en mesurer l’efficacité, y compris des publicités personnalisées si vous l’acceptez. Un message de consentement vous permet d’accepter, de refuser ou de choisir, et de modifier votre choix à tout moment. Pour en savoir plus : <a href="https://policies.google.com/technologies/partner-sites?hl=fr" target="_blank" rel="noopener">comment Google utilise les données des sites partenaires</a>.</p>
+  <p>Tant que la publicité n’est pas activée sur le site, aucune publicité réelle n’est affichée et aucun cookie publicitaire n’est déposé.</p>
+
+  <h2>Contenu réservé aux adultes</h2>
+  <p>Certaines ambiances sont réservées aux personnes majeures. Avant de les activer, l’hôte doit confirmer que tous les joueurs ont au moins 18 ans.</p>
+
+  <h2>Vos droits</h2>
+  <p>Conformément au RGPD, vous pouvez demander l’accès à vos données, leur rectification ou leur effacement, et vous opposer à leur traitement, en écrivant à <a data-editeur="email" class="todo" href="#">[adresse e-mail à compléter]</a>. Comme le jeu ne conserve aucune donnée sur un serveur, il n’y a en général rien à effacer de notre côté. Vous pouvez aussi déposer une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+  <nav class="foot"><a href="comment-jouer.html">Comment jouer</a><a href="confidentialite.html">Confidentialité</a><a href="mentions-legales.html">Mentions légales</a></nav>
+</main>
+<script src="config.js"></script>
+<script>
+  // Coordonnées de l'éditeur (réglées dans config.js)
+  (function () {
+    var e = (window.TDT_CONFIG && window.TDT_CONFIG.editeur) || {};
+    document.querySelectorAll('[data-editeur]').forEach(function (el) {
+      var v = e[el.dataset.editeur];
+      if (v) { el.textContent = v; if (el.tagName === 'A') el.href = 'mailto:' + v; }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f5c46">
+  <title>Mentions légales · Tour de Table</title>
+  <meta name="description" content="Mentions légales du site Tour de Table.">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="doc">
+  <a class="back" href="./">← Retour au jeu</a>
+
+  <h1>Mentions légales</h1>
+
+  <h2>Éditeur du site</h2>
+  <p><span data-editeur="nom" class="todo">[nom de l’éditeur à compléter]</span><br>Contact : <a data-editeur="email" class="todo" href="#">[adresse e-mail à compléter]</a></p>
+  <p class="mute small">Si le site est édité par une micro-entreprise, indiquer aussi le numéro SIRET. Un particulier peut garder son adresse confidentielle en la confiant à son hébergeur, conformément à la loi pour la confiance dans l’économie numérique (LCEN).</p>
+
+  <h2>Hébergement</h2>
+  <p>GitHub Pages, service de GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.</p>
+
+  <h2>Contenus</h2>
+  <p>Les questions du jeu sont rédigées pour Tour de Table. Les chiffres des manches « Plus ou moins » et « Le juste chiffre » proviennent de Wikidata, publiés sous licence CC0. Les polices Bowlby One et Instrument Sans sont distribuées sous licence SIL Open Font License.</p>
+  <p>Les photos utilisées dans la manche Galerie appartiennent aux joueurs qui les partagent ; elles ne sont ni conservées ni publiées par le site.</p>
+
+  <h2>Données personnelles</h2>
+  <p>Voir la <a href="confidentialite.html">politique de confidentialité</a>.</p>
+  <nav class="foot"><a href="comment-jouer.html">Comment jouer</a><a href="confidentialite.html">Confidentialité</a><a href="mentions-legales.html">Mentions légales</a></nav>
+</main>
+<script src="config.js"></script>
+<script>
+  // Coordonnées de l'éditeur (réglées dans config.js)
+  (function () {
+    var e = (window.TDT_CONFIG && window.TDT_CONFIG.editeur) || {};
+    document.querySelectorAll('[data-editeur]').forEach(function (el) {
+      var v = e[el.dataset.editeur];
+      if (v) { el.textContent = v; if (el.tagName === 'A') el.href = 'mailto:' + v; }
+    });
+  })();
+</script>
+</body>
+</html>

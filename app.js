@@ -817,7 +817,8 @@
       <label>Code de la salle<input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" value="${esc(view.pin)}" placeholder="1234"></label>
       <button id="join">Rejoindre</button>
       <p class="err" id="err">${esc(view.err)}</p>
-      <p class="mute small center">Les joueurs se connectent directement au téléphone de l'hôte : gardez-le allumé pendant la partie.</p>`;
+      <p class="mute small center">Les joueurs se connectent directement au téléphone de l'hôte : gardez-le allumé pendant la partie.</p>
+      <nav class="foot"><a href="comment-jouer.html">Comment jouer</a><a href="confidentialite.html">Confidentialité</a><a href="mentions-legales.html">Mentions légales</a></nav>`;
   }
 
   function shareLink() {
@@ -857,15 +858,15 @@
       ${host ? `
       <div class="card">
         <h3>Ambiance de la soirée</h3>
-        <div class="amb" id="amb">${Object.entries(AMB).filter(([, a]) => !a.occasion).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
+        <div class="amb" id="amb">${Object.entries(AMB).filter(([, a]) => !a.occasion && !(a.adulte && CFG.masquerAdulte)).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b><span>${a.desc}</span></button>`).join('')}</div>
         <h3 style="margin-top:6px">Spécial occasion</h3>
-        <div class="amb occ">${Object.entries(AMB).filter(([, a]) => a.occasion).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b></button>`).join('')}</div>
+        <div class="amb occ">${Object.entries(AMB).filter(([, a]) => a.occasion && !(a.adulte && CFG.masquerAdulte)).map(([k, a]) => `<button data-amb="${k}" class="${H.settings.ambiance === k ? 'sel' : ''}"><b>${a.nom}${a.pack && !packs.has(a.pack) ? ' 🔒' : ''}</b></button>`).join('')}</div>
         <p class="mute small">🔒 = gratuit en regardant une pub (ouvert 24 h).</p>
       </div>
       <button id="start" class="primary big">⚡ Lancer la partie</button>
       <p class="mute small center">${H.settings.count} manches, toutes les catégories disponibles. Tout se règle ci-dessous.</p>
       ${det('photos', '🖼️ Mes photos (facultatif)', photos)}
-      ${det('packs', '🎁 Packs gratuits avec pub', Object.entries(CFG.packs).map(([id, pk]) => `
+      ${det('packs', '🎁 Packs gratuits avec pub', Object.entries(CFG.packs).filter(([id]) => !(CFG.masquerAdulte && AMB[id] && AMB[id].adulte)).map(([id, pk]) => `
           <div class="pack">
             <div><b>${pk.nom}</b><p class="mute small">${pk.desc}</p></div>
             <div class="packact">${packs.has(id) ? `<span class="ok small">✓ ${packs.label(id)}</span>${id === 'perso' ? '<button class="small" id="editPerso">Mes questions</button>' : ''}` : `<button class="small primary" data-unlock="${id}">📺 Débloquer</button>`}</div>

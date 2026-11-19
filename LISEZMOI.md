@@ -55,6 +55,12 @@ Les chiffres de « Plus ou moins » et du « Juste chiffre » viennent de Wikida
 - **Packs d'occasion** (débloqués 24 h par une pub) : 🎄 Noël en famille, 🎂 Anniversaire, 💍 EVJF / EVG (18+), 🍻 Afterwork, 🎓 Soirée étudiante. 75 questions chacun, dans `packs.js`.
 - **Partage** : trophées de fin de partie et carte podium au format story à partager ; aperçu soigné du lien d'invitation dans WhatsApp ; installation possible sur l'écran d'accueil.
 
+## Pages d'information et préparation AdSense
+
+- `comment-jouer.html`, `confidentialite.html`, `mentions-legales.html` (liens en bas de l'accueil). Le nom de l'éditeur et l'e-mail de contact se règlent dans `config.js` (`editeur`) ; tant qu'ils sont vides, un repère jaune « à compléter » s'affiche.
+- `masquerAdulte: true` dans `config.js` cache les ambiances Coquine et EVJF / EVG (à garder pendant l'examen AdSense).
+- Quand le compte AdSense existera : acheter un nom de domaine et le brancher sur GitHub Pages, ajouter le code AdSense dans `<head>`, publier `ads.txt` à la racine, remplir `adsenseClient`, puis configurer le message de consentement dans AdSense (Confidentialité et messages).
+
 ## Fiabilité
 
 - **Indicateur de connexion** : pastille par joueur (🟢 bonne, 🟠 faible, ⚪ déconnecté) et bouton « 📶 Tester ma connexion » dans la salle d'attente.

@@ -262,3 +262,21 @@ button.joker small { font-weight: 600; color: var(--ink-soft); font-size: 13px; 
 .lightbox img { max-width: 100%; max-height: 70dvh; border-radius: 14px; border: 3px solid var(--paper); }
 .lightbox .row { width: 100%; max-width: 420px; }
 .lightbox .refuse { background: var(--tomato); color: #fff; }
+
+/* ---------- Pages d'information (comment jouer, légal) ---------- */
+.doc { max-width: 680px; margin: 0 auto; padding: 24px 20px 48px; background: var(--paper); color: var(--ink); min-height: 100dvh; line-height: 1.55; }
+.doc h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 8vw, 42px); margin: 18px 0 10px; }
+.doc h2 { font-family: var(--display); font-weight: 400; font-size: 21px; margin: 28px 0 8px; }
+.doc .lead { font-size: 18px; }
+.doc p, .doc li, .doc dd { font-size: 16.5px; }
+.doc dt { font-weight: 700; margin-top: 14px; }
+.doc dd { margin: 4px 0 0 0; }
+.doc ol, .doc ul { padding-left: 22px; }
+.doc li { margin: 6px 0; }
+.doc .back { font-weight: 700; text-decoration: none; }
+.doc .todo { background: #ffe3a3; padding: 0 4px; border-radius: 4px; }
+.doc .mute { color: var(--ink-soft); }
+.foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13.5px; margin-top: 8px; }
+.foot a { color: var(--on-felt-soft); }
+.doc .foot { margin-top: 40px; padding-top: 16px; border-top: 2px dashed var(--paper-2); }
+.doc .foot a { color: var(--ink-soft); }

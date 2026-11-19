@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f5c46">
+  <title>Comment jouer · Tour de Table</title>
+  <meta name="description" content="Règles de Tour de Table, le jeu de soirée entre amis sur téléphone : créer une partie, les manches, les points.">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="doc">
+  <a class="back" href="./">← Retour au jeu</a>
+
+  <h1>Comment jouer</h1>
+  <p class="lead">Tour de Table est un jeu de soirée pour 2 à 12 joueurs, réunis au même endroit. Chacun joue sur son téléphone, sans rien installer ni créer de compte.</p>
+
+  <h2>Lancer une partie</h2>
+  <ol>
+    <li>Une personne (l’hôte) ouvre le site, choisit un pseudo et touche « Créer une partie ». Un code à 4 chiffres et un QR code s’affichent.</li>
+    <li>Les autres scannent le QR code, ou ouvrent le site et tapent le code.</li>
+    <li>L’hôte choisit l’ambiance de la soirée, puis lance la partie. Par défaut : 10 manches tirées au hasard.</li>
+  </ol>
+  <p>Le téléphone de l’hôte relie les joueurs entre eux : il doit rester allumé sur la page du jeu. S’il décroche (appel, veille, réseau), un autre joueur reprend la partie automatiquement, avec les mêmes scores.</p>
+
+  <h2>Les manches</h2>
+  <dl>
+    <dt>👉 Qui est le plus susceptible de…</dt>
+    <dd>Une situation s’affiche (« … rater son train ? »). Chacun vote pour la personne qui colle le mieux. Voter comme la majorité rapporte 500 points.</dd>
+    <dt>🔟 Sur une échelle de 1 à 10</dt>
+    <dd>Un joueur tiré au sort se note en secret sur une phrase (« J’aime le camping. »). Les autres devinent sa note : 1 000 points si c’est exact, 600 à un point près, 300 à deux points près. Le joueur noté gagne 100 points par bonne estimation.</dd>
+    <dt>⚖️ Plus ou moins</dt>
+    <dd>Deux choix : quel pays est le plus peuplé, quel sommet le plus haut, quel film est sorti en premier… Une bonne réponse rapporte de 500 à 1 000 points selon la rapidité. Chiffres issus de Wikidata.</dd>
+    <dt>🔢 Le juste chiffre</dt>
+    <dd>Donnez une estimation (habitants, hauteur, année…). Plus vous êtes proche, plus vous marquez, jusqu’à 1 000 points, et le plus proche gagne 200 points de bonus.</dd>
+    <dt>🖼️ Galerie</dt>
+    <dd>Chacun sélectionne des photos dans sa galerie ; le jeu en tire 20 au hasard, et chacun refuse celles qu’il ne veut pas montrer avant de valider. Pendant la manche, une photo s’affiche : à qui appartient-elle ? Il faut au moins 3 joueurs.</dd>
+    <dt>✍️ Qui a écrit ça ?</dt>
+    <dd>Tout le monde répond en secret à une question, puis on devine l’auteur de chaque réponse. L’auteur gagne 150 points par joueur piégé. Il faut au moins 3 joueurs.</dd>
+  </dl>
+
+  <h2>Ambiances et packs</h2>
+  <p>L’hôte choisit l’ambiance de la soirée : Décontractée ou Sérieuse, ou un pack d’occasion (Noël en famille, Anniversaire, Afterwork, Soirée étudiante). L’ambiance change les questions des manches « Plus susceptible », « Échelle 1 à 10 » et « Qui a écrit ça ? ».</p>
+  <p>Les packs d’occasion et le pack « Questions personnalisées » (pour écrire vos propres questions) sont gratuits : on les débloque pour 24 heures en regardant une publicité.</p>
+
+  <h2>Le joker ×2</h2>
+  <p>Pendant l’affichage des résultats, chaque joueur peut regarder une publicité pour doubler ses points à la manche suivante, trois fois au maximum par partie.</p>
+
+  <h2>Fin de partie</h2>
+  <p>Le podium s’affiche avec les trophées de la soirée. Le bouton « Partager le podium » crée une image à envoyer à vos amis ou à publier en story.</p>
+
+  <h2>Questions fréquentes</h2>
+  <dl>
+    <dt>Faut-il installer une application ?</dt>
+    <dd>Non. Le jeu s’ouvre dans le navigateur du téléphone. Vous pouvez l’ajouter à l’écran d’accueil pour le retrouver plus vite.</dd>
+    <dt>Un joueur ne parvient pas à rejoindre la salle</dt>
+    <dd>Vérifiez le code, et que le téléphone de l’hôte est allumé sur la page du jeu. Sur certains réseaux (Wi-Fi d’entreprise, certains forfaits mobiles), la connexion directe entre téléphones peut échouer : passez du Wi-Fi à la 4G ou l’inverse. Le bouton « 📶 Tester » de la salle indique la qualité de la connexion.</dd>
+    <dt>Le jeu est-il gratuit ?</dt>
+    <dd>Oui. Il est financé par une courte pause publicitaire au milieu des parties de 10 manches et par les publicités que les joueurs choisissent de regarder.</dd>
+  </dl>
+  <nav class="foot"><a href="comment-jouer.html">Comment jouer</a><a href="confidentialite.html">Confidentialité</a><a href="mentions-legales.html">Mentions légales</a></nav>
+</main>
+<script src="config.js"></script>
+<script>
+  // Coordonnées de l'éditeur (réglées dans config.js)
+  (function () {
+    var e = (window.TDT_CONFIG && window.TDT_CONFIG.editeur) || {};
+    document.querySelectorAll('[data-editeur]').forEach(function (el) {
+      var v = e[el.dataset.editeur];
+      if (v) { el.textContent = v; if (el.tagName === 'A') el.href = 'mailto:' + v; }
+    });
+  })();
+</script>
+</body>
+</html>
